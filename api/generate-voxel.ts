@@ -442,6 +442,43 @@ function validateManufacturability(
   };
 }
 
+function settleVoxelsByGravity(
+  voxels: Array<{ x: number; y: number; z: number; color: number }>
+): { settled: Array<{ x: number; y: number; z: number; color: number }>; movedCount: number } {
+  // Strong guarantee: for each (x,z) column, bricks are packed from y=0 upward.
+  // This removes all floating voxels in final output.
+  const columns = new Map<string, Array<{ x: number; y: number; z: number; color: number }>>();
+  for (const v of voxels) {
+    const key = `${v.x},${v.z}`;
+    if (!columns.has(key)) {
+      columns.set(key, []);
+    }
+    columns.get(key)!.push(v);
+  }
+
+  const settled: Array<{ x: number; y: number; z: number; color: number }> = [];
+  let movedCount = 0;
+
+  for (const [, col] of columns) {
+    col.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < col.length; i++) {
+      const original = col[i];
+      const targetY = i; // pack from ground
+      if (original.y !== targetY) {
+        movedCount++;
+      }
+      settled.push({
+        x: original.x,
+        y: targetY,
+        z: original.z,
+        color: original.color,
+      });
+    }
+  }
+
+  return { settled, movedCount };
+}
+
 function findConnectedComponentsFromVoxels(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
   const occupied = new Set(voxels.map((v) => cellKey(v.x, v.y, v.z)));
   const visited = new Set<string>();
@@ -688,6 +725,10 @@ export default async function handler(req: any, res: any) {
       repairStats = repaired.stats;
     }
 
+    // Final hard constraint: no floating voxels.
+    const gravityResult = settleVoxelsByGravity(finalVoxels);
+    finalVoxels = dedupeVoxels(gravityResult.settled);
+
     const bricks = voxelToBricks(finalVoxels);
     const connectionValidation = validateBrickConnectivity(bricks);
     const manufacturability = validateManufacturability(finalVoxels, bricks, connectionValidation);
@@ -699,7 +740,10 @@ export default async function handler(req: any, res: any) {
       validationBeforeRepair: initialValidation,
       connectionValidation,
       manufacturability,
-      repairStats,
+      repairStats: {
+        ...repairStats,
+        gravityMovedVoxels: gravityResult.movedCount,
+      },
     });
   } catch (error: any) {
     console.error('generate-voxel failed:', error);
