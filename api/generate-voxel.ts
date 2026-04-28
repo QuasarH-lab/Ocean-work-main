@@ -479,6 +479,95 @@ function settleVoxelsByGravity(
   return { settled, movedCount };
 }
 
+function sideNeighborCount(
+  occupied: Set<string>,
+  x: number,
+  y: number,
+  z: number
+) {
+  let count = 0;
+  const neighbors = [
+    cellKey(x + 1, y, z),
+    cellKey(x - 1, y, z),
+    cellKey(x, y, z + 1),
+    cellKey(x, y, z - 1),
+  ];
+  for (const n of neighbors) {
+    if (occupied.has(n)) count++;
+  }
+  return count;
+}
+
+function compactVoxelsForTightContact(
+  voxels: Array<{ x: number; y: number; z: number; color: number }>
+): { compacted: Array<{ x: number; y: number; z: number; color: number }>; movedCount: number } {
+  // Adhesive pass:
+  // For weakly connected voxels, try shifting by 1 step in x/z toward denser neighbors on the same layer.
+  // Constraints: no overlap, and support must remain (y==0 or voxel below exists).
+  const working = dedupeVoxels(voxels).map((v) => ({ ...v }));
+  let movedCount = 0;
+
+  for (let iter = 0; iter < 6; iter++) {
+    let movedInIter = 0;
+    const occupied = new Set(working.map((v) => cellKey(v.x, v.y, v.z)));
+
+    for (const v of working) {
+      const currentKey = cellKey(v.x, v.y, v.z);
+      const currentNeighbors = sideNeighborCount(occupied, v.x, v.y, v.z);
+      if (currentNeighbors >= 2) {
+        continue;
+      }
+
+      const candidates = [
+        { x: v.x + 1, y: v.y, z: v.z },
+        { x: v.x - 1, y: v.y, z: v.z },
+        { x: v.x, y: v.y, z: v.z + 1 },
+        { x: v.x, y: v.y, z: v.z - 1 },
+      ];
+
+      let best: { x: number; y: number; z: number; gain: number } | null = null;
+      for (const c of candidates) {
+        const targetKey = cellKey(c.x, c.y, c.z);
+        if (occupied.has(targetKey)) {
+          continue;
+        }
+        // Keep physical support.
+        if (c.y > 0 && !occupied.has(cellKey(c.x, c.y - 1, c.z))) {
+          continue;
+        }
+
+        // Evaluate neighbor gain if moved.
+        occupied.delete(currentKey);
+        occupied.add(targetKey);
+        const newNeighbors = sideNeighborCount(occupied, c.x, c.y, c.z);
+        occupied.delete(targetKey);
+        occupied.add(currentKey);
+
+        const gain = newNeighbors - currentNeighbors;
+        if (gain > 0 && (!best || gain > best.gain)) {
+          best = { x: c.x, y: c.y, z: c.z, gain };
+        }
+      }
+
+      if (best) {
+        occupied.delete(currentKey);
+        v.x = best.x;
+        v.y = best.y;
+        v.z = best.z;
+        occupied.add(cellKey(v.x, v.y, v.z));
+        movedCount++;
+        movedInIter++;
+      }
+    }
+
+    if (movedInIter === 0) {
+      break;
+    }
+  }
+
+  return { compacted: dedupeVoxels(working), movedCount };
+}
+
 function findConnectedComponentsFromVoxels(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
   const occupied = new Set(voxels.map((v) => cellKey(v.x, v.y, v.z)));
   const visited = new Set<string>();
@@ -725,9 +814,13 @@ export default async function handler(req: any, res: any) {
       repairStats = repaired.stats;
     }
 
-    // Final hard constraint: no floating voxels.
+    // Final hard constraints:
+    // 1) no floating voxels
+    // 2) tighter side contact for brick-like attachment
     const gravityResult = settleVoxelsByGravity(finalVoxels);
     finalVoxels = dedupeVoxels(gravityResult.settled);
+    const compactResult = compactVoxelsForTightContact(finalVoxels);
+    finalVoxels = compactResult.compacted;
 
     const bricks = voxelToBricks(finalVoxels);
     const connectionValidation = validateBrickConnectivity(bricks);
@@ -743,6 +836,7 @@ export default async function handler(req: any, res: any) {
       repairStats: {
         ...repairStats,
         gravityMovedVoxels: gravityResult.movedCount,
+        compactMovedVoxels: compactResult.movedCount,
       },
     });
   } catch (error: any) {
