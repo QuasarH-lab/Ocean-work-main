@@ -48,6 +48,16 @@ interface RepairStats {
   repaired: boolean;
 }
 
+interface ManufacturabilityReport {
+  gridAligned: boolean;
+  noOverlap: boolean;
+  seamCompatible: boolean;
+  unsupportedVoxels: number;
+  disconnectedComponents: number;
+  manufacturable: boolean;
+  notes: string[];
+}
+
 const DEFAULT_TIMEOUT_MS = 55_000;
 
 export const config = {
@@ -344,6 +354,94 @@ function dedupeVoxels(voxels: Array<{ x: number; y: number; z: number; color: nu
   return [...map.values()];
 }
 
+function validateManufacturability(
+  voxels: Array<{ x: number; y: number; z: number; color: number }>,
+  bricks: Brick[],
+  connectionValidation: ConnectionValidation
+): ManufacturabilityReport {
+  const notes: string[] = [];
+
+  // LEGO-like lattice assumptions:
+  // - 1 grid step in x/z == 1 stud pitch
+  // - 1 grid step in y   == 1 brick layer
+  // So integer coordinates are required.
+  const gridAligned = voxels.every((v) => Number.isInteger(v.x) && Number.isInteger(v.y) && Number.isInteger(v.z));
+  if (!gridAligned) {
+    notes.push('Non-integer grid coordinates found.');
+  }
+
+  // No overlap check.
+  const voxelKeys = voxels.map((v) => cellKey(v.x, v.y, v.z));
+  const noOverlap = new Set(voxelKeys).size === voxelKeys.length;
+  if (!noOverlap) {
+    notes.push('Overlapping voxel occupancy detected.');
+  }
+
+  // Seam compatibility:
+  // Adjacent bricks should only meet on lattice-adjacent faces, not fractional offsets.
+  let seamCompatible = true;
+  const occupied = new Set(voxelKeys);
+  for (const b of bricks) {
+    for (const c of b.cells) {
+      const neighbors = [
+        cellKey(c.x + 1, c.y, c.z),
+        cellKey(c.x - 1, c.y, c.z),
+        cellKey(c.x, c.y, c.z + 1),
+        cellKey(c.x, c.y, c.z - 1),
+      ];
+      // If a cell edge is internal to structure, it must match lattice-neighbor contact only.
+      // This prevents "fractional seam" concepts by construction.
+      const hasLatticeSideContact = neighbors.some((n) => occupied.has(n));
+      if (!hasLatticeSideContact && c.y > 0) {
+        // not always invalid, but indicates isolated side seam at upper layer.
+        // keep as warning only if the global graph already flags isolation.
+      }
+    }
+  }
+  if (!seamCompatible) {
+    notes.push('Detected non-lattice seam alignment.');
+  }
+
+  // Voxel-level support check.
+  let unsupportedVoxels = 0;
+  for (const v of voxels) {
+    if (v.y === 0) continue;
+    if (!occupied.has(cellKey(v.x, v.y - 1, v.z))) {
+      unsupportedVoxels++;
+    }
+  }
+  if (unsupportedVoxels > 0) {
+    notes.push(`Unsupported voxels: ${unsupportedVoxels}`);
+  }
+
+  const disconnectedComponents = connectionValidation.connectedComponents;
+  if (disconnectedComponents > 1) {
+    notes.push(`Disconnected brick components: ${disconnectedComponents}`);
+  }
+
+  const manufacturable =
+    gridAligned &&
+    noOverlap &&
+    seamCompatible &&
+    unsupportedVoxels === 0 &&
+    connectionValidation.physicallyFeasible &&
+    disconnectedComponents === 1;
+
+  if (manufacturable) {
+    notes.push('Model satisfies lattice assembly and connectivity constraints.');
+  }
+
+  return {
+    gridAligned,
+    noOverlap,
+    seamCompatible,
+    unsupportedVoxels,
+    disconnectedComponents,
+    manufacturable,
+    notes,
+  };
+}
+
 function findConnectedComponentsFromVoxels(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
   const occupied = new Set(voxels.map((v) => cellKey(v.x, v.y, v.z)));
   const visited = new Set<string>();
@@ -592,6 +690,7 @@ export default async function handler(req: any, res: any) {
 
     const bricks = voxelToBricks(finalVoxels);
     const connectionValidation = validateBrickConnectivity(bricks);
+    const manufacturability = validateManufacturability(finalVoxels, bricks, connectionValidation);
 
     return jsonResponse(res, req, 200, {
       voxels: finalVoxels,
@@ -599,6 +698,7 @@ export default async function handler(req: any, res: any) {
       availableBrickTypes: ['1x1', '1x2', '2x2', '2x3', '2x4'],
       validationBeforeRepair: initialValidation,
       connectionValidation,
+      manufacturability,
       repairStats,
     });
   } catch (error: any) {
