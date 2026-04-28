@@ -29,3 +29,15 @@ This project now provides a server endpoint:
 
 The frontend calls this endpoint first, and the endpoint uses `GEMINI_API_KEY` on the server.  
 Set `GEMINI_API_KEY` in Vercel Project Settings -> Environment Variables.
+
+## Local database
+
+This project now includes a local SQLite database for saved voxel builds.
+
+- Database file: `.data/ocean.db`
+- Schema file: `db/schema.sql`
+- API endpoint: `GET/POST /api/builds`
+
+Use it locally to persist generated, rebuilt, and imported models.
+
+Important: SQLite file storage inside Vercel serverless runtime is ephemeral, so this setup is for local/dev persistence. For production persistence on Vercel, move the same schema to a hosted database such as Neon, Supabase, or PostgreSQL.

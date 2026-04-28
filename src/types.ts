@@ -53,7 +53,23 @@ export interface RebuildTarget {
 }
 
 export interface SavedModel {
+  id?: string;
   name: string;
   data: VoxelData[];
   baseModel?: string;
+  prompt?: string;
+  mode?: 'create' | 'morph' | 'image' | 'import';
+  createdAt?: number;
+}
+
+export interface PersistedBuildRecord {
+  id: string;
+  name: string;
+  prompt: string;
+  mode: 'create' | 'morph' | 'image' | 'import';
+  baseModel: string | null;
+  voxelCount: number;
+  data: VoxelData[];
+  createdAt: number;
+  updatedAt: number;
 }
