@@ -239,10 +239,18 @@ export class VoxelEngine {
     });
 
     const brickSize = CONFIG.VOXEL_SIZE;
-    const bodyHeight = brickSize * 0.82;
+    // Tight-fit geometry: reduce artificial seams between neighboring bricks.
+    const sideGap = 0.01;
+    const bodyHeight = brickSize * 0.9;
     const studRadius = brickSize * 0.22;
-    const studHeight = brickSize * 0.16;
-    const bodyGeometry = new RoundedBoxGeometry(brickSize - 0.08, bodyHeight, brickSize - 0.08, 3, brickSize * 0.1);
+    const studHeight = brickSize * 0.12;
+    const bodyGeometry = new RoundedBoxGeometry(
+      brickSize - sideGap,
+      bodyHeight,
+      brickSize - sideGap,
+      3,
+      brickSize * 0.06
+    );
     const studGeometry = new THREE.CylinderGeometry(studRadius, studRadius, studHeight, 24);
 
     const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -309,8 +317,13 @@ export class VoxelEngine {
       return;
     }
 
-    const bodyOffsetY = (CONFIG.VOXEL_SIZE - CONFIG.VOXEL_SIZE * 0.82) / 2;
-    const studOffsetY = bodyOffsetY + (CONFIG.VOXEL_SIZE * 0.82) / 2 + (CONFIG.VOXEL_SIZE * 0.16) / 2 - 0.01;
+    const brickSize = CONFIG.VOXEL_SIZE;
+    const bodyHeight = brickSize * 0.9;
+    const studHeight = brickSize * 0.12;
+    // Slight overlap removes visible slice-lines between stacked layers.
+    const verticalOverlap = 0.02;
+    const bodyOffsetY = (brickSize - bodyHeight) / 2 - verticalOverlap;
+    const studOffsetY = bodyOffsetY + bodyHeight / 2 + studHeight / 2 - 0.005;
     const coveredStudScale = 0.0001;
 
     // Build occupancy lookup using rounded lattice coordinates, so we can hide studs
