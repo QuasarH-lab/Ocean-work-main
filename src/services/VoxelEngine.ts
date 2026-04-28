@@ -311,15 +311,36 @@ export class VoxelEngine {
 
     const bodyOffsetY = (CONFIG.VOXEL_SIZE - CONFIG.VOXEL_SIZE * 0.82) / 2;
     const studOffsetY = bodyOffsetY + (CONFIG.VOXEL_SIZE * 0.82) / 2 + (CONFIG.VOXEL_SIZE * 0.16) / 2 - 0.01;
+    const coveredStudScale = 0.0001;
+
+    // Build occupancy lookup using rounded lattice coordinates, so we can hide studs
+    // on bricks that are covered by another brick directly above.
+    const occupied = new Set<string>();
+    this.voxels.forEach((v) => {
+      const key = `${Math.round(v.x)},${Math.round(v.y)},${Math.round(v.z)}`;
+      occupied.add(key);
+    });
 
     this.voxels.forEach((v, i) => {
+      const gx = Math.round(v.x);
+      const gy = Math.round(v.y);
+      const gz = Math.round(v.z);
+      const hasBlockAbove = occupied.has(`${gx},${gy + 1},${gz}`);
+
       this.dummy.position.set(v.x, v.y + bodyOffsetY, v.z);
       this.dummy.rotation.set(v.rx, v.ry, v.rz);
+      this.dummy.scale.set(1, 1, 1);
       this.dummy.updateMatrix();
       this.brickBodyMesh?.setMatrixAt(i, this.dummy.matrix);
       this.brickBodyMesh?.setColorAt(i, v.color);
 
       this.dummy.position.set(v.x, v.y + studOffsetY, v.z);
+      // Hide lower stud when an upper brick occupies the same x/z on the next layer.
+      this.dummy.scale.set(
+        hasBlockAbove ? coveredStudScale : 1,
+        hasBlockAbove ? coveredStudScale : 1,
+        hasBlockAbove ? coveredStudScale : 1
+      );
       this.dummy.updateMatrix();
       this.brickStudMesh?.setMatrixAt(i, this.dummy.matrix);
       this.brickStudMesh?.setColorAt(i, v.color.clone().offsetHSL(0, 0, 0.06));
