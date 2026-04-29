@@ -8,6 +8,7 @@ import {
   Code2,
   Copy,
   Database,
+  Dog,
   Download,
   Hammer,
   Image as ImageIcon,
@@ -21,12 +22,13 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { GoogleGenAI, Type } from '@google/genai';
 import { cn } from '../lib/utils';
+import { normalizeBricks, voxelsToBricks } from '../lib/brickLayout';
 import { Generators } from '../lib/voxelGenerators';
 import { VoxelEngine } from '../services/VoxelEngine';
 import {
   AppState,
+  BrickData,
   BuildHistory,
   LegoPart,
   PersistedBuildRecord,
@@ -64,8 +66,9 @@ export default function Generator() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [voxelCount, setVoxelCount] = useState(0);
   const [appState, setAppState] = useState<AppState>(AppState.STABLE);
-  const [currentBaseModel, setCurrentBaseModel] = useState('Eagle');
+  const [currentBaseModel, setCurrentBaseModel] = useState('Fox');
   const [currentModelData, setCurrentModelData] = useState<VoxelData[]>([]);
+  const [currentModelBricks, setCurrentModelBricks] = useState<BrickData[]>([]);
   const [customBuilds, setCustomBuilds] = useState<SavedModel[]>([]);
   const [customRebuilds, setCustomRebuilds] = useState<SavedModel[]>([]);
   const [history, setHistory] = useState<BuildHistory[]>(INITIAL_HISTORY);
@@ -114,6 +117,7 @@ export default function Generator() {
             mode: record.mode,
             createdAt: record.createdAt,
             data: record.data,
+            bricks: voxelsToBricks(record.data),
           }))
       );
       setCustomRebuilds(
@@ -127,6 +131,7 @@ export default function Generator() {
             createdAt: record.createdAt,
             baseModel: record.baseModel || undefined,
             data: record.data,
+            bricks: voxelsToBricks(record.data),
           }))
       );
       setHistory(
@@ -148,10 +153,12 @@ export default function Generator() {
 
     const engine = new VoxelEngine(viewerRef.current, setAppState, setVoxelCount);
     engineRef.current = engine;
-    const initialModel = Generators.Eagle();
-    engine.loadInitialModel(initialModel);
+    const initialModel = Generators.Fox();
+    const initialBricks = voxelsToBricks(initialModel);
+    engine.loadInitialModel(initialModel, initialBricks);
     setCurrentModelData(initialModel);
-    syncPartsFromVoxels(initialModel);
+    setCurrentModelBricks(initialBricks);
+    syncPartsFromBricks(initialBricks);
 
     const handleResize = () => engine.handleResize();
     const resizeObserver = new ResizeObserver(() => engine.handleResize());
@@ -187,34 +194,42 @@ export default function Generator() {
   const canBreak = appState === AppState.STABLE && modelLoaded;
   const canRebuild = appState === AppState.DISMANTLING && !isGenerating;
 
-  function syncPartsFromVoxels(data: VoxelData[]) {
-    const counts = new Map<number, number>();
-    data.forEach((voxel) => {
-      counts.set(voxel.color, (counts.get(voxel.color) || 0) + 1);
+  function syncPartsFromBricks(bricks: BrickData[]) {
+    const counts = new Map<string, { color: number; type: string; count: number }>();
+    bricks.forEach((brick) => {
+      const key = `${brick.type}-${brick.color}`;
+      const current = counts.get(key);
+      counts.set(key, {
+        color: brick.color,
+        type: brick.type,
+        count: (current?.count || 0) + 1,
+      });
     });
-    const generatedParts: LegoPart[] = Array.from(counts.entries()).map(([color, count], index) => ({
-      id: `${color}-${index}`,
-      name: '1x1 Brick',
-      code: `Voxel #${index + 1}`,
-      color: `#${color.toString(16).padStart(6, '0')}`,
-      count,
+    const generatedParts: LegoPart[] = Array.from(counts.values()).map((item, index) => ({
+      id: `${item.type}-${item.color}-${index}`,
+      name: `${item.type} Brick`,
+      code: `Part #${index + 1}`,
+      color: `#${item.color.toString(16).padStart(6, '0')}`,
+      count: item.count,
     }));
     setParts(generatedParts);
   }
 
-  function loadModel(name: string, data: VoxelData[]) {
-    engineRef.current?.loadInitialModel(data);
+  function loadModel(name: string, data: VoxelData[], bricks = voxelsToBricks(data)) {
+    engineRef.current?.loadInitialModel(data, bricks);
     setCurrentBaseModel(name);
     setCurrentModelData(data);
-    syncPartsFromVoxels(data);
+    setCurrentModelBricks(bricks);
+    syncPartsFromBricks(bricks);
     setHistory((prev) => [{ id: `${Date.now()}`, prompt: name, timestamp: Date.now() }, ...prev.slice(0, 19)]);
   }
 
-  function rebuildModel(name: string, data: VoxelData[]) {
-    engineRef.current?.rebuild(data);
-    engineRef.current?.focusModel(data);
+  function rebuildModel(name: string, data: VoxelData[], bricks = voxelsToBricks(data)) {
+    engineRef.current?.rebuild(data, bricks);
+    engineRef.current?.focusModel(data, bricks);
     setCurrentModelData(data);
-    syncPartsFromVoxels(data);
+    setCurrentModelBricks(bricks);
+    syncPartsFromBricks(bricks);
     setHistory((prev) => [{ id: `${Date.now()}`, prompt: `${currentBaseModel} -> ${name}`, timestamp: Date.now() }, ...prev.slice(0, 19)]);
   }
 
@@ -252,6 +267,7 @@ export default function Generator() {
         createdAt: record.createdAt,
         baseModel: record.baseModel || undefined,
         data: record.data,
+        bricks: voxelsToBricks(record.data),
       };
 
       if (record.mode === 'morph') {
@@ -266,11 +282,11 @@ export default function Generator() {
     }
   }
 
-  function handlePresetBuild(name: 'Eagle') {
+  function handlePresetBuild(name: 'Eagle' | 'Fox') {
     loadModel(name, Generators[name]());
   }
 
-  function handlePresetRebuild(name: 'Cat' | 'Rabbit' | 'Twins') {
+  function handlePresetRebuild(name: 'Cat' | 'Rabbit' | 'Twins' | 'Fox') {
     rebuildModel(name, Generators[name]());
   }
 
@@ -281,7 +297,7 @@ export default function Generator() {
   }
 
   function handleLoadSavedBuild(build: SavedModel) {
-    loadModel(build.name, build.data);
+    loadModel(build.name, build.data, build.bricks);
   }
 
   async function handleDeleteRecord(id: string) {
@@ -320,103 +336,58 @@ export default function Generator() {
     }
 
     try {
+      const normalizedPrompt = prompt.trim().toLowerCase();
+      const shouldUseLocalFox =
+        mode === 'create' &&
+        (normalizedPrompt.includes('fox') || normalizedPrompt.includes('狐狸') || normalizedPrompt.includes('小狐狸'));
+
+      if (shouldUseLocalFox) {
+        const voxelData = Generators.Fox();
+        const brickData = voxelsToBricks(voxelData);
+        loadModel('Small Fox', voxelData, brickData);
+        await persistBuild({
+          name: 'Small Fox',
+          prompt,
+          mode: 'create',
+          baseModel: null,
+          data: voxelData,
+        });
+        setPrompt('');
+        setReferenceImage(null);
+        return;
+      }
+
       const paletteHint =
         mode === 'morph' && engineRef.current
           ? `Try to stay close to these existing colors: ${engineRef.current.getUniqueColors().join(', ')}.`
           : 'Choose colors that make the build readable and playful.';
 
-      let voxelData: VoxelData[] = [];
+      const response = await fetch('/api/generate-voxel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode,
+          prompt,
+          paletteHint,
+          referenceImage: referenceImage
+            ? {
+                base64: referenceImage.base64,
+                mimeType: referenceImage.mimeType,
+              }
+            : null,
+        }),
+      });
 
-      try {
-        const response = await fetch('/api/generate-voxel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            mode,
-            prompt,
-            paletteHint,
-            referenceImage: referenceImage
-              ? {
-                  base64: referenceImage.base64,
-                  mimeType: referenceImage.mimeType,
-                }
-              : null,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to generate voxel model');
-        }
-
-        const payload = await response.json();
-        voxelData = Array.isArray(payload?.voxels) ? payload.voxels : [];
-      } catch (serverError) {
-        // AI Studio local runtime can work without a Vercel /api route.
-        if (!process.env.GEMINI_API_KEY) {
-          throw serverError;
-        }
-
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const systemPrompt = mode === 'image'
-          ? `You are a 3D Lego Voxel Artist. Analyze the attached image and convert it into a 3D Lego-style voxel model.
-             Infer depth and volume to make it a true 3D sculpture, not just a flat plane.
-             Return only a JSON array of voxels. Each voxel must have: x, y, z (integers) and color (hex string).
-             Keep the total voxel count between 200 and 800 for performance.
-             The model should be centered around (0, 0, 0).`
-          : `Create a voxel Lego model for: ${prompt}. ${paletteHint}
-             Return only a JSON array. Each item must include x, y, z, color where color is a hex string like #ff0000.
-             Keep the model compact and suitable for a tabletop toy sculpture.`;
-
-        const contents: any[] = [
-          {
-            role: 'user',
-            parts: [{ text: systemPrompt }],
-          },
-        ];
-        if (referenceImage) {
-          contents[0].parts.push({
-            inlineData: {
-              data: referenceImage.base64,
-              mimeType: referenceImage.mimeType,
-            },
-          });
-        }
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  x: { type: Type.NUMBER },
-                  y: { type: Type.NUMBER },
-                  z: { type: Type.NUMBER },
-                  color: { type: Type.STRING },
-                },
-                required: ['x', 'y', 'z', 'color'],
-              },
-            },
-          },
-        });
-
-        const rawData = JSON.parse(response.text || '[]');
-        voxelData = rawData.map((voxel: { x: number; y: number; z: number; color: string }) => {
-          const value = voxel.color.startsWith('#') ? voxel.color.slice(1) : voxel.color;
-          return {
-            x: Math.round(Number(voxel.x)) || 0,
-            y: Math.round(Number(voxel.y)) || 0,
-            z: Math.round(Number(voxel.z)) || 0,
-            color: Number.parseInt(value, 16) || 0xcccccc,
-          };
-        });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to generate voxel model');
       }
+
+      const payload = await response.json();
+      const voxelData: VoxelData[] = Array.isArray(payload?.voxels) ? payload.voxels : [];
+      const brickData = normalizeBricks(payload?.bricks, voxelData);
 
       if (!voxelData.length) {
         throw new Error('Model generation returned an empty voxel list');
@@ -425,9 +396,9 @@ export default function Generator() {
       const buildName = mode === 'image' ? 'Photo Build' : (prompt || 'New Build');
 
       if (mode === 'create' || mode === 'image') {
-        loadModel(buildName, voxelData);
+        loadModel(buildName, voxelData, brickData);
       } else {
-        rebuildModel(buildName, voxelData);
+        rebuildModel(buildName, voxelData, brickData);
       }
 
       await persistBuild({
@@ -444,7 +415,7 @@ export default function Generator() {
       setReferenceImage(null);
     } catch (error) {
       console.error('Generation failed:', error);
-      window.alert('Generation failed. On Vercel, please set server environment variable GEMINI_API_KEY.');
+      window.alert('Generation failed. Please check that the server API is running and GEMINI_API_KEY is configured on the server.');
     } finally {
       setIsGenerating(false);
       setIsVoxelizing(false);
@@ -488,7 +459,8 @@ export default function Generator() {
               : Number.parseInt(String(colorValue || 'cccccc'), 16) || 0xcccccc,
         };
       });
-      loadModel('Imported Build', voxelData);
+      const brickData = voxelsToBricks(voxelData);
+      loadModel('Imported Build', voxelData, brickData);
       void persistBuild({
         name: 'Imported Build',
         prompt: 'Imported from JSON blueprint',
@@ -799,7 +771,7 @@ export default function Generator() {
             Break
           </button>
           <button
-            onClick={() => rebuildModel(currentBaseModel, currentModelData)}
+            onClick={() => rebuildModel(currentBaseModel, currentModelData, currentModelBricks)}
             disabled={!canRebuild}
             className="stud-button px-5 py-3 rounded-xl bg-secondary text-on-secondary font-headline font-bold flex items-center gap-2 disabled:opacity-50"
           >
@@ -871,6 +843,14 @@ export default function Generator() {
                 <Rabbit className="w-4 h-4 text-tertiary group-hover:scale-110 transition-transform" />
                 Rabbit
               </button>
+              <button
+                onClick={() => handlePresetRebuild('Fox')}
+                disabled={!canRebuild}
+                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold disabled:opacity-50 flex items-center justify-center gap-2 border border-outline-variant/10 hover:bg-surface-bright transition-all group"
+              >
+                <Dog className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+                Fox
+              </button>
             </div>
           </div>
 
@@ -881,7 +861,7 @@ export default function Generator() {
                 {relevantRebuilds.map((item, index) => (
                   <button
                     key={`${item.name}-${index}`}
-                    onClick={() => rebuildModel(item.name, item.data)}
+                    onClick={() => rebuildModel(item.name, item.data, item.bricks)}
                     disabled={!canRebuild}
                     className="w-full rounded-xl bg-surface-container-high px-4 py-3 text-left border border-outline-variant/20 disabled:opacity-50 shrink-0"
                   >
@@ -1044,6 +1024,7 @@ export default function Generator() {
                         createdAt: selectedRecord.createdAt,
                         baseModel: selectedRecord.baseModel || undefined,
                         data: selectedRecord.data,
+                        bricks: voxelsToBricks(selectedRecord.data),
                       })}
                       className="stud-button px-4 py-3 rounded-xl bg-primary text-on-primary font-bold"
                     >

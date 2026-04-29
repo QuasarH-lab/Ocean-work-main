@@ -35,48 +35,124 @@ function generateSphere(
 export const Generators = {
   Eagle: (): VoxelData[] => {
     const map = new Map<string, VoxelData>();
-    for (let x = -8; x < 8; x++) {
-      const y = Math.sin(x * 0.2) * 1.5;
-      const z = Math.cos(x * 0.1) * 1.5;
-      generateSphere(map, x, y, z, 1.8, COLORS.WOOD);
-      if (Math.random() > 0.7) {
-        generateSphere(map, x, y + 2, z + (Math.random() - 0.5) * 3, 1.5, COLORS.GREEN);
-      }
-    }
-
-    const ex = 0;
-    const ey = 2;
-    const ez = 2;
-    generateSphere(map, ex, ey + 6, ez, 4.5, COLORS.DARK, 1.4);
-    for (let x = ex - 2; x <= ex + 2; x++) {
-      for (let y = ey + 4; y <= ey + 9; y++) {
-        setBlock(map, x, y, ez + 3, COLORS.LIGHT);
-      }
-    }
-    for (const x of [-4, -3, 3, 4]) {
-      for (let y = ey + 4; y <= ey + 10; y++) {
-        for (let z = ez - 2; z <= ez + 3; z++) {
-          setBlock(map, x, y, z, COLORS.DARK);
+    const addBox = (
+      x1: number,
+      x2: number,
+      y1: number,
+      y2: number,
+      z1: number,
+      z2: number,
+      color: number
+    ) => {
+      for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+          for (let z = z1; z <= z2; z++) {
+            setBlock(map, x, y, z, color);
+          }
         }
       }
-    }
-    for (let x = ex - 2; x <= ex + 2; x++) {
-      for (let y = ey; y <= ey + 4; y++) {
-        for (let z = ez - 5; z <= ez - 3; z++) {
-          setBlock(map, x, y, z, COLORS.WHITE);
-        }
-      }
-    }
+    };
 
-    const hy = ey + 12;
-    const hz = ez + 1;
-    generateSphere(map, ex, hy, hz, 2.8, COLORS.WHITE);
-    generateSphere(map, ex, hy - 2, hz, 2.5, COLORS.WHITE);
-    [[-2, 0], [-2, 1], [2, 0], [2, 1]].forEach(([dx, dy]) => setBlock(map, ex + dx, ey + dy, ez, COLORS.TALON));
-    [[0, 1], [0, 2], [1, 1], [-1, 1]].forEach(([dx, dz]) => setBlock(map, ex + dx, hy, hz + 2 + dz, COLORS.GOLD));
-    setBlock(map, ex, hy - 1, hz + 3, COLORS.GOLD);
-    [[-1.5, COLORS.BLACK], [1.5, COLORS.BLACK]].forEach(([dx, color]) => setBlock(map, ex + Number(dx), hy + 0.5, hz + 1.5, Number(color)));
-    [[-1.5, COLORS.WHITE], [1.5, COLORS.WHITE]].forEach(([dx, color]) => setBlock(map, ex + Number(dx), hy + 1.5, hz + 1.5, Number(color)));
+    const addLayer = (
+      y: number,
+      x1: number,
+      x2: number,
+      z1: number,
+      z2: number,
+      color: number
+    ) => addBox(x1, x2, y, y, z1, z2, color);
+
+    // A small deterministic perch gives the talons a believable base without adding random clutter.
+    addBox(-6, 6, 0, 0, 3, 4, COLORS.WOOD);
+    addBox(-5, -4, 0, 1, 4, 5, COLORS.WOOD);
+    addBox(4, 5, 0, 1, 4, 5, COLORS.WOOD);
+
+    // Talons and feet, with separate toe tips so the base reads as claws instead of a slab.
+    addBox(-3, -2, 1, 2, -1, 1, COLORS.TALON);
+    addBox(2, 3, 1, 2, -1, 1, COLORS.TALON);
+    [-4, -2, 0, 2, 4].forEach((x) => setBlock(map, x, 1, -2, COLORS.GOLD));
+    [-3, 3].forEach((x) => {
+      setBlock(map, x, 1, 2, COLORS.GOLD);
+      setBlock(map, x, 2, -2, COLORS.GOLD);
+    });
+
+    // Body core: more layers and a rounded silhouette, each upper footprint nested over lower support.
+    addLayer(2, -4, 4, -2, 3, COLORS.DARK);
+    addLayer(3, -5, 5, -2, 3, COLORS.DARK);
+    addLayer(4, -5, 5, -3, 3, COLORS.DARK);
+    addLayer(5, -4, 4, -3, 3, COLORS.DARK);
+    addLayer(6, -4, 4, -2, 2, COLORS.DARK);
+    addLayer(7, -3, 3, -2, 2, COLORS.DARK);
+    addLayer(8, -2, 2, -1, 1, COLORS.DARK);
+
+    // Lighter chest and belly feathers on the front.
+    addLayer(3, -2, 2, -4, -3, COLORS.LIGHT);
+    addLayer(4, -2, 2, -4, -3, COLORS.LIGHT);
+    addLayer(5, -1, 1, -4, -3, COLORS.LIGHT);
+    setBlock(map, -2, 6, -3, COLORS.LIGHT);
+    setBlock(map, -1, 6, -3, COLORS.LIGHT);
+    setBlock(map, 0, 6, -3, COLORS.LIGHT);
+    setBlock(map, 1, 6, -3, COLORS.LIGHT);
+    setBlock(map, 2, 6, -3, COLORS.LIGHT);
+
+    // Wide stepped wings with visible feather bands. The lower layers are broader, upper layers taper.
+    addLayer(2, -12, -5, -1, 3, COLORS.DARK);
+    addLayer(2, 5, 12, -1, 3, COLORS.DARK);
+    addLayer(3, -12, -5, -1, 3, COLORS.DARK);
+    addLayer(3, 5, 12, -1, 3, COLORS.DARK);
+    addLayer(4, -11, -5, 0, 3, COLORS.DARK);
+    addLayer(4, 5, 11, 0, 3, COLORS.DARK);
+    addLayer(5, -10, -5, 0, 2, COLORS.DARK);
+    addLayer(5, 5, 10, 0, 2, COLORS.DARK);
+    addLayer(6, -9, -5, 1, 2, COLORS.DARK);
+    addLayer(6, 5, 9, 1, 2, COLORS.DARK);
+    addLayer(7, -7, -5, 1, 2, COLORS.DARK);
+    addLayer(7, 5, 7, 1, 2, COLORS.DARK);
+
+    // Feather-tip color breaks are supported 1x1/1x2 details, not floating specks.
+    [-12, -10, -8, -6, 6, 8, 10, 12].forEach((x) => {
+      setBlock(map, x, 4, 3, COLORS.WOOD);
+      setBlock(map, x, 5, 2, COLORS.WOOD);
+    });
+    [-11, -9, -7, 7, 9, 11].forEach((x) => setBlock(map, x, 3, -1, COLORS.WOOD));
+
+    // Tail feathers behind the body, layered like a fan.
+    addLayer(1, -4, 4, 4, 5, COLORS.WHITE);
+    addLayer(2, -4, 4, 4, 5, COLORS.WHITE);
+    addLayer(3, -3, 3, 4, 5, COLORS.WHITE);
+    addLayer(4, -2, 2, 4, 5, COLORS.WHITE);
+    [-5, -3, -1, 1, 3, 5].forEach((x) => setBlock(map, x, 1, 5, COLORS.WHITE));
+
+    // Neck and head: larger white head with cheek blocks and a brow, all sitting on a dark neck.
+    addLayer(9, -2, 2, -1, 1, COLORS.DARK);
+    addLayer(10, -3, 3, -2, 1, COLORS.WHITE);
+    addLayer(11, -3, 3, -3, 1, COLORS.WHITE);
+    addLayer(12, -2, 2, -3, 1, COLORS.WHITE);
+    addLayer(13, -1, 1, -2, 0, COLORS.WHITE);
+    setBlock(map, -3, 11, -2, COLORS.WHITE);
+    setBlock(map, 3, 11, -2, COLORS.WHITE);
+    setBlock(map, -2, 12, -3, COLORS.WHITE);
+    setBlock(map, 2, 12, -3, COLORS.WHITE);
+
+    // Eyes stay as supported black 1x1 details. Brow blocks make the gaze more eagle-like.
+    setBlock(map, -1, 12, -3, COLORS.BLACK);
+    setBlock(map, 1, 12, -3, COLORS.BLACK);
+    setBlock(map, -1, 13, -2, COLORS.DARK);
+    setBlock(map, 1, 13, -2, COLORS.DARK);
+
+    // Short supported beak. Keep it over the face footprint so support repair does not create a yellow column.
+    addBox(0, 0, 10, 11, -4, -4, COLORS.GOLD);
+    setBlock(map, 0, 9, -4, COLORS.DARK);
+
+    // Extra feather texture raises the model detail without globally scaling it.
+    [-11, -9, -7, -5].forEach((x, index) => {
+      addBox(x, x + 1, 3 + index % 2, 4 + index % 2, -3, -2, COLORS.WOOD);
+      addBox(-x - 1, -x, 3 + index % 2, 4 + index % 2, -3, -2, COLORS.WOOD);
+    });
+    [-3, -1, 1, 3].forEach((x) => {
+      setBlock(map, x, 5, -4, COLORS.LIGHT);
+      setBlock(map, x, 6, -4, COLORS.LIGHT);
+    });
 
     return Array.from(map.values());
   },
@@ -122,6 +198,71 @@ export const Generators = {
     setBlock(map, cx - 1, chy + 0.5, cz + 3, COLORS.BLACK);
     setBlock(map, cx + 1, chy + 0.5, cz + 3, COLORS.BLACK);
     setBlock(map, cx, chy, cz + 3, COLORS.TALON);
+    return Array.from(map.values());
+  },
+
+  Fox: (): VoxelData[] => {
+    const map = new Map<string, VoxelData>();
+    const baseY = CONFIG.FLOOR_Y + 1;
+
+    const addBox = (
+      x1: number,
+      x2: number,
+      y1: number,
+      y2: number,
+      z1: number,
+      z2: number,
+      color: number
+    ) => {
+      for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+          for (let z = z1; z <= z2; z++) {
+            setBlock(map, x, y, z, color);
+          }
+        }
+      }
+    };
+
+    // Low, long body so the silhouette reads as a fox rather than a generic cat.
+    generateSphere(map, -2, baseY + 3, 0, 3.3, COLORS.FOX, 0.75);
+    generateSphere(map, 2, baseY + 3, 0, 3.1, COLORS.FOX, 0.72);
+    addBox(-3, 3, baseY + 1, baseY + 2, -2, 2, COLORS.FOX);
+    addBox(-1, 3, baseY + 1, baseY + 2, -3, -3, COLORS.WHITE);
+
+    // Four supported legs and dark paws.
+    [-4, -1, 2, 5].forEach((x) => {
+      addBox(x, x + 1, CONFIG.FLOOR_Y, baseY + 1, -1, 0, COLORS.FOX_DARK);
+      setBlock(map, x, CONFIG.FLOOR_Y, -2, COLORS.FOX_DARK);
+      setBlock(map, x + 1, CONFIG.FLOOR_Y, -2, COLORS.FOX_DARK);
+    });
+
+    // Big bushy tail curls upward behind the body, with a white supported tip.
+    addBox(-8, -5, baseY + 1, baseY + 2, 1, 3, COLORS.FOX);
+    addBox(-10, -7, baseY + 2, baseY + 4, 2, 4, COLORS.FOX);
+    addBox(-11, -9, baseY + 4, baseY + 6, 3, 5, COLORS.FOX);
+    addBox(-12, -10, baseY + 5, baseY + 6, 4, 5, COLORS.WHITE);
+    setBlock(map, -12, baseY + 4, 4, COLORS.WHITE);
+
+    // Head, cheeks, pointed muzzle, and ears. Front is negative z, matching the app camera.
+    generateSphere(map, 5, baseY + 6, -1, 2.8, COLORS.FOX, 0.85);
+    addBox(4, 6, baseY + 4, baseY + 5, -4, -3, COLORS.WHITE);
+    addBox(5, 5, baseY + 5, baseY + 6, -5, -4, COLORS.WHITE);
+    setBlock(map, 5, baseY + 5, -6, COLORS.BLACK);
+
+    addBox(3, 4, baseY + 8, baseY + 10, -1, 0, COLORS.FOX);
+    addBox(6, 7, baseY + 8, baseY + 10, -1, 0, COLORS.FOX);
+    setBlock(map, 4, baseY + 9, -1, COLORS.WHITE);
+    setBlock(map, 6, baseY + 9, -1, COLORS.WHITE);
+
+    setBlock(map, 4, baseY + 6, -4, COLORS.BLACK);
+    setBlock(map, 6, baseY + 6, -4, COLORS.BLACK);
+    setBlock(map, 4, baseY + 7, -3, COLORS.FOX_DARK);
+    setBlock(map, 6, baseY + 7, -3, COLORS.FOX_DARK);
+
+    // A few same-color contour bands add life without creating floating freckles.
+    addBox(-4, 1, baseY + 5, baseY + 5, -2, -2, COLORS.LIGHT);
+    addBox(-2, 4, baseY + 4, baseY + 4, 2, 2, COLORS.FOX_DARK);
+
     return Array.from(map.values());
   },
 

@@ -7,6 +7,8 @@ export const COLORS = {
   WOOD: 0x3b2f2f,
   GREEN: 0x228b22,
   TALON: 0xe5c100,
+  FOX: 0xc85a24,
+  FOX_DARK: 0x3f2418,
 };
 
 export const CONFIG = {

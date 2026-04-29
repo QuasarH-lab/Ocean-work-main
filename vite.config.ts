@@ -1,13 +1,22 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import dotenv from 'dotenv';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 type ApiHandler = (req: any, res: any) => Promise<any> | any;
 
 function createNodeStyleResponse(res: ServerResponse) {
   return {
+    setHeader(name: string, value: string) {
+      res.setHeader(name, value);
+      return this;
+    },
+    end(payload?: string) {
+      res.end(payload);
+      return this;
+    },
     status(code: number) {
       res.statusCode = code;
       return this;
@@ -97,22 +106,17 @@ function localApiPlugin(): Plugin {
   };
 }
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
-  return {
-    plugins: [localApiPlugin(), react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+export default defineConfig({
+  plugins: [localApiPlugin(), react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
     },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-    },
-  };
+  },
+  server: {
+    hmr: process.env.DISABLE_HMR !== 'true',
+  },
 });

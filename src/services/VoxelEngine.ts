@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { AppState, RebuildTarget, SimulationVoxel, VoxelData } from '../types';
+import { AppState, BrickData, RebuildTarget, SimulationBrick, VoxelData } from '../types';
 import { COLORS, CONFIG } from '../lib/voxelConstants';
+import { bricksToVoxels, voxelsToBricks } from '../lib/brickLayout';
 
 export class VoxelEngine {
   private container: HTMLElement;
@@ -12,8 +13,10 @@ export class VoxelEngine {
   private controls: OrbitControls;
   private brickBodyMesh: THREE.InstancedMesh | null = null;
   private brickStudMesh: THREE.InstancedMesh | null = null;
+  private brickUndersideMesh: THREE.InstancedMesh | null = null;
+  private brickTubeMesh: THREE.InstancedMesh | null = null;
   private dummy = new THREE.Object3D();
-  private voxels: SimulationVoxel[] = [];
+  private bricks: SimulationBrick[] = [];
   private rebuildTargets: RebuildTarget[] = [];
   private rebuildStartTime = 0;
   private state: AppState = AppState.STABLE;
@@ -42,6 +45,9 @@ export class VoxelEngine {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
@@ -52,14 +58,14 @@ export class VoxelEngine {
     this.controls.autoRotateSpeed = 0.5;
     this.controls.target.set(0, 5, 0);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
     this.scene.add(ambientLight);
 
-    const rimLight = new THREE.DirectionalLight(0xaec8ff, 0.75);
+    const rimLight = new THREE.DirectionalLight(0xbfd4ff, 1.1);
     rimLight.position.set(-40, 50, -20);
     this.scene.add(rimLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.05);
     dirLight.position.set(50, 80, 30);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -83,23 +89,30 @@ export class VoxelEngine {
     this.animate();
   }
 
-  public loadInitialModel(data: VoxelData[]) {
-    this.createVoxels(data);
-    this.fitCameraToData(data);
-    this.onCountChange(this.voxels.length);
+  public loadInitialModel(data: VoxelData[], brickData?: BrickData[]) {
+    const bricks = brickData?.length ? brickData : voxelsToBricks(data);
+    this.createBricks(bricks);
+    this.fitCameraToBricks(bricks);
+    this.onCountChange(this.getTotalCells());
     this.state = AppState.STABLE;
     this.onStateChange(this.state);
   }
 
-  public rebuild(targetModel: VoxelData[]) {
+  public rebuild(targetModel: VoxelData[], brickData?: BrickData[]) {
     if (this.state === AppState.REBUILDING) {
       return;
     }
 
-    const available = this.voxels.map((v, i) => ({ index: i, color: v.color, taken: false }));
-    const mappings: RebuildTarget[] = new Array(this.voxels.length).fill(null);
+    const targetBricks = brickData?.length ? brickData : voxelsToBricks(targetModel);
+    if (targetBricks.length !== this.bricks.length) {
+      this.loadInitialModel(targetModel, targetBricks);
+      return;
+    }
 
-    targetModel.forEach((target) => {
+    const available = this.bricks.map((brick, i) => ({ index: i, color: brick.color, taken: false }));
+    const mappings: RebuildTarget[] = new Array(this.bricks.length).fill(null);
+
+    targetBricks.forEach((target) => {
       let bestDist = 9999;
       let bestIdx = -1;
 
@@ -131,17 +144,20 @@ export class VoxelEngine {
           x: target.x,
           y: target.y,
           z: target.z,
+          width: target.width,
+          depth: target.depth,
+          cells: target.cells,
           delay: h * 800,
         };
       }
     });
 
-    for (let i = 0; i < this.voxels.length; i++) {
+    for (let i = 0; i < this.bricks.length; i++) {
       if (!mappings[i]) {
         mappings[i] = {
-          x: this.voxels[i].x,
-          y: this.voxels[i].y,
-          z: this.voxels[i].z,
+          x: this.bricks[i].x,
+          y: this.bricks[i].y,
+          z: this.bricks[i].z,
           isRubble: true,
           delay: 0,
         };
@@ -161,13 +177,13 @@ export class VoxelEngine {
 
     this.state = AppState.DISMANTLING;
     this.onStateChange(this.state);
-    this.voxels.forEach((v) => {
-      v.vx = (Math.random() - 0.5) * 0.8;
-      v.vy = Math.random() * 0.5;
-      v.vz = (Math.random() - 0.5) * 0.8;
-      v.rvx = (Math.random() - 0.5) * 0.2;
-      v.rvy = (Math.random() - 0.5) * 0.2;
-      v.rvz = (Math.random() - 0.5) * 0.2;
+    this.bricks.forEach((brick) => {
+      brick.vx = (Math.random() - 0.5) * 0.8;
+      brick.vy = Math.random() * 0.5;
+      brick.vz = (Math.random() - 0.5) * 0.8;
+      brick.rvx = (Math.random() - 0.5) * 0.2;
+      brick.rvy = (Math.random() - 0.5) * 0.2;
+      brick.rvz = (Math.random() - 0.5) * 0.2;
     });
   }
 
@@ -181,18 +197,18 @@ export class VoxelEngine {
     this.controls.autoRotate = enabled;
   }
 
-  public focusModel(data: VoxelData[]) {
-    this.fitCameraToData(data);
+  public focusModel(data: VoxelData[], brickData?: BrickData[]) {
+    this.fitCameraToBricks(brickData?.length ? brickData : voxelsToBricks(data));
   }
 
   public getJsonData(): string {
     return JSON.stringify(
-      this.voxels.map((v, i) => ({
+      this.getVoxelData().map((voxel, i) => ({
         id: i,
-        x: +v.x.toFixed(2),
-        y: +v.y.toFixed(2),
-        z: +v.z.toFixed(2),
-        c: `#${v.color.getHexString()}`,
+        x: voxel.x,
+        y: voxel.y,
+        z: voxel.z,
+        c: `#${voxel.color.toString(16).padStart(6, '0')}`,
       })),
       null,
       2
@@ -200,31 +216,41 @@ export class VoxelEngine {
   }
 
   public getUniqueColors(): string[] {
-    return Array.from(new Set(this.voxels.map((v) => `#${v.color.getHexString()}`)));
+    return Array.from(new Set(this.bricks.map((brick) => `#${brick.color.getHexString()}`)));
   }
 
   public cleanup() {
     cancelAnimationFrame(this.animationId);
     this.disposeInstancedMesh(this.brickBodyMesh);
     this.disposeInstancedMesh(this.brickStudMesh);
+    this.disposeInstancedMesh(this.brickUndersideMesh);
+    this.disposeInstancedMesh(this.brickTubeMesh);
     this.container.removeChild(this.renderer.domElement);
     this.renderer.dispose();
   }
 
-  private createVoxels(data: VoxelData[]) {
+  private createBricks(data: BrickData[]) {
     this.disposeInstancedMesh(this.brickBodyMesh);
     this.disposeInstancedMesh(this.brickStudMesh);
+    this.disposeInstancedMesh(this.brickUndersideMesh);
+    this.disposeInstancedMesh(this.brickTubeMesh);
     this.brickBodyMesh = null;
     this.brickStudMesh = null;
+    this.brickUndersideMesh = null;
+    this.brickTubeMesh = null;
 
-    this.voxels = data.map((v, i) => {
-      const color = new THREE.Color(v.color);
+    this.bricks = data.map((brick, i) => {
+      const color = new THREE.Color(brick.color);
       color.offsetHSL(0, 0, (Math.random() * 0.04) - 0.02);
       return {
         id: i,
-        x: v.x,
-        y: v.y,
-        z: v.z,
+        type: brick.type,
+        x: brick.x,
+        y: brick.y,
+        z: brick.z,
+        width: brick.width,
+        depth: brick.depth,
+        cells: brick.cells,
         color,
         vx: 0,
         vy: 0,
@@ -239,50 +265,89 @@ export class VoxelEngine {
     });
 
     const brickSize = CONFIG.VOXEL_SIZE;
-    // Tight-fit geometry: reduce artificial seams between neighboring bricks.
-    const sideGap = 0.01;
-    const bodyHeight = brickSize * 0.9;
-    const studRadius = brickSize * 0.22;
-    const studHeight = brickSize * 0.12;
+    const bodyHeight = brickSize * 0.78;
+    const studRadius = brickSize * 0.285;
+    const studHeight = brickSize * 0.2;
+    const undersideHeight = brickSize * 0.035;
+    const tubeRadius = brickSize * 0.22;
+    const tubeHeight = brickSize * 0.32;
     const bodyGeometry = new RoundedBoxGeometry(
-      brickSize - sideGap,
+      brickSize * 0.92,
       bodyHeight,
-      brickSize - sideGap,
-      3,
-      brickSize * 0.06
+      brickSize * 0.92,
+      5,
+      brickSize * 0.045
     );
-    const studGeometry = new THREE.CylinderGeometry(studRadius, studRadius, studHeight, 24);
+    const studGeometry = new THREE.CylinderGeometry(studRadius * 0.94, studRadius, studHeight, 36, 1);
+    const undersideGeometry = new RoundedBoxGeometry(
+      brickSize * 0.62,
+      undersideHeight,
+      brickSize * 0.62,
+      3,
+      brickSize * 0.025
+    );
+    const tubeGeometry = new THREE.CylinderGeometry(tubeRadius, tubeRadius, tubeHeight, 32, 1, true);
 
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-      roughness: 0.42,
+    const bodyMaterial = new THREE.MeshPhysicalMaterial({
+      roughness: 0.26,
       metalness: 0.02,
-      envMapIntensity: 0.6,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.32,
+      envMapIntensity: 0.95,
     });
-    const studMaterial = new THREE.MeshStandardMaterial({
-      roughness: 0.35,
+    const studMaterial = new THREE.MeshPhysicalMaterial({
+      roughness: 0.2,
       metalness: 0.03,
-      envMapIntensity: 0.7,
+      clearcoat: 0.7,
+      clearcoatRoughness: 0.24,
+      envMapIntensity: 1.1,
+    });
+    const undersideMaterial = new THREE.MeshStandardMaterial({
+      roughness: 0.7,
+      metalness: 0,
+      envMapIntensity: 0.2,
+    });
+    const tubeMaterial = new THREE.MeshPhysicalMaterial({
+      roughness: 0.34,
+      metalness: 0.02,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.42,
+      envMapIntensity: 0.65,
+      side: THREE.DoubleSide,
     });
 
-    this.brickBodyMesh = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, this.voxels.length);
-    this.brickStudMesh = new THREE.InstancedMesh(studGeometry, studMaterial, this.voxels.length);
+    const studCount = Math.max(1, this.getTotalCells());
+    this.brickBodyMesh = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, Math.max(1, this.bricks.length));
+    this.brickStudMesh = new THREE.InstancedMesh(studGeometry, studMaterial, studCount);
+    this.brickUndersideMesh = new THREE.InstancedMesh(
+      undersideGeometry,
+      undersideMaterial,
+      Math.max(1, this.bricks.length)
+    );
+    this.brickTubeMesh = new THREE.InstancedMesh(tubeGeometry, tubeMaterial, studCount);
     this.brickBodyMesh.castShadow = true;
     this.brickBodyMesh.receiveShadow = true;
     this.brickStudMesh.castShadow = true;
     this.brickStudMesh.receiveShadow = true;
+    this.brickUndersideMesh.castShadow = true;
+    this.brickUndersideMesh.receiveShadow = true;
+    this.brickTubeMesh.castShadow = true;
+    this.brickTubeMesh.receiveShadow = true;
     this.scene.add(this.brickBodyMesh);
+    this.scene.add(this.brickUndersideMesh);
+    this.scene.add(this.brickTubeMesh);
     this.scene.add(this.brickStudMesh);
     this.draw();
   }
 
-  private fitCameraToData(data: VoxelData[]) {
-    if (!data.length) {
+  private fitCameraToBricks(bricks: BrickData[]) {
+    if (!bricks.length) {
       return;
     }
 
     const bounds = new THREE.Box3();
-    data.forEach((voxel) => {
-      bounds.expandByPoint(new THREE.Vector3(voxel.x, voxel.y, voxel.z));
+    bricks.forEach((brick) => {
+      brick.cells.forEach((cell) => bounds.expandByPoint(new THREE.Vector3(cell.x, cell.y, cell.z)));
     });
 
     const size = bounds.getSize(new THREE.Vector3());
@@ -300,69 +365,114 @@ export class VoxelEngine {
     const fov = THREE.MathUtils.degToRad(this.camera.fov);
     const horizontalFov = 2 * Math.atan(Math.tan(fov / 2) * aspect);
     const fitFov = Math.min(fov, horizontalFov);
-    const distance = (this.framingRadius * 1.7) / Math.tan(fitFov / 2);
+    const distance = (this.framingRadius * 1.25) / Math.tan(fitFov / 2);
 
     this.controls.target.lerp(this.framingCenter, 1);
     this.camera.position.set(
       this.framingCenter.x + distance * 0.62,
       this.framingCenter.y + distance * 0.52,
-      this.framingCenter.z + distance
+      this.framingCenter.z - distance
     );
     this.camera.lookAt(this.framingCenter);
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.near = Math.max(80, distance * 0.85);
+      this.scene.fog.far = Math.max(220, distance + this.framingRadius * 3);
+    }
     this.controls.update();
   }
 
   private draw() {
-    if (!this.brickBodyMesh || !this.brickStudMesh) {
+    if (!this.brickBodyMesh || !this.brickStudMesh || !this.brickUndersideMesh || !this.brickTubeMesh) {
       return;
     }
 
     const brickSize = CONFIG.VOXEL_SIZE;
-    const bodyHeight = brickSize * 0.9;
-    const studHeight = brickSize * 0.12;
-    // Slight overlap removes visible slice-lines between stacked layers.
+    const bodyHeight = brickSize * 0.78;
+    const studHeight = brickSize * 0.2;
+    const undersideHeight = brickSize * 0.035;
+    const tubeHeight = brickSize * 0.32;
     const verticalOverlap = 0.02;
     const bodyOffsetY = (brickSize - bodyHeight) / 2 - verticalOverlap;
-    const studOffsetY = bodyOffsetY + bodyHeight / 2 + studHeight / 2 - 0.005;
+    const studOffsetY = bodyOffsetY + bodyHeight / 2 + studHeight / 2 - 0.012;
+    const undersideOffsetY = bodyOffsetY - bodyHeight / 2 - undersideHeight / 2 + 0.02;
+    const tubeOffsetY = bodyOffsetY - bodyHeight / 2 + tubeHeight / 2 + 0.035;
     const coveredStudScale = 0.0001;
 
-    // Build occupancy lookup using rounded lattice coordinates, so we can hide studs
-    // on bricks that are covered by another brick directly above.
     const occupied = new Set<string>();
-    this.voxels.forEach((v) => {
-      const key = `${Math.round(v.x)},${Math.round(v.y)},${Math.round(v.z)}`;
-      occupied.add(key);
+    this.bricks.forEach((brick) => {
+      brick.cells.forEach((cell) => {
+        occupied.add(`${Math.round(cell.x)},${Math.round(cell.y)},${Math.round(cell.z)}`);
+      });
     });
 
-    this.voxels.forEach((v, i) => {
-      const gx = Math.round(v.x);
-      const gy = Math.round(v.y);
-      const gz = Math.round(v.z);
-      const hasBlockAbove = occupied.has(`${gx},${gy + 1},${gz}`);
-
-      this.dummy.position.set(v.x, v.y + bodyOffsetY, v.z);
-      this.dummy.rotation.set(v.rx, v.ry, v.rz);
-      this.dummy.scale.set(1, 1, 1);
+    this.bricks.forEach((brick, i) => {
+      this.dummy.position.set(
+        brick.x + (brick.width - 1) / 2,
+        brick.y + bodyOffsetY,
+        brick.z + (brick.depth - 1) / 2
+      );
+      this.dummy.rotation.set(brick.rx, brick.ry, brick.rz);
+      this.dummy.scale.set(brick.width, 1, brick.depth);
       this.dummy.updateMatrix();
       this.brickBodyMesh?.setMatrixAt(i, this.dummy.matrix);
-      this.brickBodyMesh?.setColorAt(i, v.color);
+      this.brickBodyMesh?.setColorAt(i, brick.color);
 
-      this.dummy.position.set(v.x, v.y + studOffsetY, v.z);
-      // Hide lower stud when an upper brick occupies the same x/z on the next layer.
-      this.dummy.scale.set(
-        hasBlockAbove ? coveredStudScale : 1,
-        hasBlockAbove ? coveredStudScale : 1,
-        hasBlockAbove ? coveredStudScale : 1
+      this.dummy.position.set(
+        brick.x + (brick.width - 1) / 2,
+        brick.y + undersideOffsetY,
+        brick.z + (brick.depth - 1) / 2
       );
+      this.dummy.rotation.set(brick.rx, brick.ry, brick.rz);
+      this.dummy.scale.set(Math.max(0.62, brick.width * 1.18), 1, Math.max(0.62, brick.depth * 1.18));
       this.dummy.updateMatrix();
-      this.brickStudMesh?.setMatrixAt(i, this.dummy.matrix);
-      this.brickStudMesh?.setColorAt(i, v.color.clone().offsetHSL(0, 0, 0.06));
+      this.brickUndersideMesh?.setMatrixAt(i, this.dummy.matrix);
+      this.brickUndersideMesh?.setColorAt(i, brick.color.clone().offsetHSL(0, -0.08, -0.28));
+    });
+
+    let studIndex = 0;
+    let tubeIndex = 0;
+    this.bricks.forEach((brick) => {
+      const centerX = brick.x + (brick.width - 1) / 2;
+      const centerZ = brick.z + (brick.depth - 1) / 2;
+      const rotation = new THREE.Euler(brick.rx, brick.ry, brick.rz);
+
+      brick.cells.forEach((cell) => {
+        const gx = Math.round(cell.x);
+        const gy = Math.round(cell.y);
+        const gz = Math.round(cell.z);
+        const hasBlockAbove = occupied.has(`${gx},${gy + 1},${gz}`);
+        const localOffset = new THREE.Vector3(cell.x - centerX, 0, cell.z - centerZ).applyEuler(rotation);
+
+        this.dummy.position.set(centerX + localOffset.x, brick.y + studOffsetY + localOffset.y, centerZ + localOffset.z);
+        this.dummy.rotation.set(brick.rx, brick.ry, brick.rz);
+        this.dummy.scale.set(
+          hasBlockAbove ? coveredStudScale : 1,
+          hasBlockAbove ? coveredStudScale : 1,
+          hasBlockAbove ? coveredStudScale : 1
+        );
+        this.dummy.updateMatrix();
+        this.brickStudMesh?.setMatrixAt(studIndex, this.dummy.matrix);
+        this.brickStudMesh?.setColorAt(studIndex, brick.color.clone().offsetHSL(0, 0, 0.06));
+        studIndex++;
+
+        this.dummy.position.set(centerX + localOffset.x, brick.y + tubeOffsetY + localOffset.y, centerZ + localOffset.z);
+        this.dummy.rotation.set(brick.rx, brick.ry, brick.rz);
+        this.dummy.scale.set(1, 1, 1);
+        this.dummy.updateMatrix();
+        this.brickTubeMesh?.setMatrixAt(tubeIndex, this.dummy.matrix);
+        this.brickTubeMesh?.setColorAt(tubeIndex, brick.color.clone().offsetHSL(0, -0.02, -0.16));
+        tubeIndex++;
+      });
     });
 
     this.brickBodyMesh.instanceMatrix.needsUpdate = true;
     this.brickBodyMesh.instanceColor!.needsUpdate = true;
     this.brickStudMesh.instanceMatrix.needsUpdate = true;
     this.brickStudMesh.instanceColor!.needsUpdate = true;
+    this.brickUndersideMesh.instanceMatrix.needsUpdate = true;
+    this.brickUndersideMesh.instanceColor!.needsUpdate = true;
+    this.brickTubeMesh.instanceMatrix.needsUpdate = true;
+    this.brickTubeMesh.instanceColor!.needsUpdate = true;
   }
 
   private getColorDist(c1: THREE.Color, hex2: number) {
@@ -375,23 +485,30 @@ export class VoxelEngine {
 
   private updatePhysics() {
     if (this.state === AppState.DISMANTLING) {
-      this.voxels.forEach((v) => {
-        v.vy -= 0.025;
-        v.x += v.vx;
-        v.y += v.vy;
-        v.z += v.vz;
-        v.rx += v.rvx;
-        v.ry += v.rvy;
-        v.rz += v.rvz;
+      this.bricks.forEach((brick) => {
+        brick.vy -= 0.025;
+        brick.x += brick.vx;
+        brick.y += brick.vy;
+        brick.z += brick.vz;
+        brick.cells = brick.cells.map((cell) => ({
+          x: cell.x + brick.vx,
+          y: cell.y + brick.vy,
+          z: cell.z + brick.vz,
+        }));
+        brick.rx += brick.rvx;
+        brick.ry += brick.rvy;
+        brick.rz += brick.rvz;
 
-        if (v.y < CONFIG.FLOOR_Y + 0.5) {
-          v.y = CONFIG.FLOOR_Y + 0.5;
-          v.vy *= -0.5;
-          v.vx *= 0.9;
-          v.vz *= 0.9;
-          v.rvx *= 0.8;
-          v.rvy *= 0.8;
-          v.rvz *= 0.8;
+        if (brick.y < CONFIG.FLOOR_Y + 0.5) {
+          const correction = CONFIG.FLOOR_Y + 0.5 - brick.y;
+          brick.y += correction;
+          brick.cells = brick.cells.map((cell) => ({ ...cell, y: cell.y + correction }));
+          brick.vy *= -0.5;
+          brick.vx *= 0.9;
+          brick.vz *= 0.9;
+          brick.rvx *= 0.8;
+          brick.rvy *= 0.8;
+          brick.rvz *= 0.8;
         }
       });
       return;
@@ -404,7 +521,7 @@ export class VoxelEngine {
     const elapsed = Date.now() - this.rebuildStartTime;
     let allDone = true;
 
-    this.voxels.forEach((v, i) => {
+    this.bricks.forEach((brick, i) => {
       const target = this.rebuildTargets[i];
       if (!target || target.isRubble) {
         return;
@@ -416,22 +533,33 @@ export class VoxelEngine {
       }
 
       const speed = 0.12;
-      v.x += (target.x - v.x) * speed;
-      v.y += (target.y - v.y) * speed;
-      v.z += (target.z - v.z) * speed;
-      v.rx += (0 - v.rx) * speed;
-      v.ry += (0 - v.ry) * speed;
-      v.rz += (0 - v.rz) * speed;
+      const previousX = brick.x;
+      const previousY = brick.y;
+      const previousZ = brick.z;
+      brick.x += (target.x - brick.x) * speed;
+      brick.y += (target.y - brick.y) * speed;
+      brick.z += (target.z - brick.z) * speed;
+      brick.rx += (0 - brick.rx) * speed;
+      brick.ry += (0 - brick.ry) * speed;
+      brick.rz += (0 - brick.rz) * speed;
 
-      if ((target.x - v.x) ** 2 + (target.y - v.y) ** 2 + (target.z - v.z) ** 2 > 0.01) {
+      const dx = brick.x - previousX;
+      const dy = brick.y - previousY;
+      const dz = brick.z - previousZ;
+      brick.cells = brick.cells.map((cell) => ({ x: cell.x + dx, y: cell.y + dy, z: cell.z + dz }));
+
+      if ((target.x - brick.x) ** 2 + (target.y - brick.y) ** 2 + (target.z - brick.z) ** 2 > 0.01) {
         allDone = false;
       } else {
-        v.x = target.x;
-        v.y = target.y;
-        v.z = target.z;
-        v.rx = 0;
-        v.ry = 0;
-        v.rz = 0;
+        brick.x = target.x;
+        brick.y = target.y;
+        brick.z = target.z;
+        brick.width = target.width || brick.width;
+        brick.depth = target.depth || brick.depth;
+        brick.cells = target.cells || brick.cells;
+        brick.rx = 0;
+        brick.ry = 0;
+        brick.rz = 0;
       }
     });
 
@@ -449,6 +577,31 @@ export class VoxelEngine {
       this.draw();
     }
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private getVoxelData(): VoxelData[] {
+    return bricksToVoxels(
+      this.bricks.map((brick) => ({
+        id: `${brick.id}`,
+        type: brick.type,
+        x: Math.round(brick.x),
+        y: Math.round(brick.y),
+        z: Math.round(brick.z),
+        width: brick.width,
+        depth: brick.depth,
+        height: 1,
+        color: brick.color.getHex(),
+        cells: brick.cells.map((cell) => ({
+          x: Math.round(cell.x),
+          y: Math.round(cell.y),
+          z: Math.round(cell.z),
+        })),
+      }))
+    );
+  }
+
+  private getTotalCells() {
+    return this.bricks.reduce((sum, brick) => sum + brick.cells.length, 0);
   }
 
   private disposeInstancedMesh(mesh: THREE.InstancedMesh | null) {
