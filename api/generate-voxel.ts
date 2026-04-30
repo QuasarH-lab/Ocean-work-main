@@ -699,10 +699,7 @@ function addEnhancedVoxel(
   }
 }
 
-function enhanceVoxelResolution(
-  voxels: Array<{ x: number; y: number; z: number; color: number }>,
-  minimumVoxels = 1300
-) {
+function buildVoxelSource(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
   const source = new Map<string, { x: number; y: number; z: number; color: number }>();
   voxels.forEach((voxel) => {
     const x = Math.round(voxel.x);
@@ -710,6 +707,64 @@ function enhanceVoxelResolution(
     const z = Math.round(voxel.z);
     source.set(cellKey(x, y, z), { x, y, z, color: voxel.color });
   });
+  return source;
+}
+
+function ensureSculpturalVolume(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
+  const source = buildVoxelSource(voxels);
+  if (!source.size) {
+    return voxels;
+  }
+
+  const cells = [...source.values()];
+  const xs = cells.map((cell) => cell.x);
+  const ys = cells.map((cell) => cell.y);
+  const zs = cells.map((cell) => cell.z);
+  const width = Math.max(...xs) - Math.min(...xs) + 1;
+  const height = Math.max(...ys) - Math.min(...ys) + 1;
+  const depth = Math.max(...zs) - Math.min(...zs) + 1;
+  const broadSide = Math.max(width, depth);
+
+  if (height >= broadSide * 0.42 || height >= 14) {
+    return cells;
+  }
+
+  const enhanced = new Map(source);
+  const topByColumn = new Map<string, { x: number; y: number; z: number; color: number }>();
+  cells.forEach((cell) => {
+    const columnKey = `${cell.x},${cell.z}`;
+    const current = topByColumn.get(columnKey);
+    if (!current || cell.y > current.y) {
+      topByColumn.set(columnKey, cell);
+    }
+  });
+
+  const lift = Math.min(4, Math.ceil(broadSide * 0.42 - height));
+  topByColumn.forEach((cell) => {
+    const neighbors = [
+      source.get(cellKey(cell.x + 1, cell.y, cell.z)),
+      source.get(cellKey(cell.x - 1, cell.y, cell.z)),
+      source.get(cellKey(cell.x, cell.y, cell.z + 1)),
+      source.get(cellKey(cell.x, cell.y, cell.z - 1)),
+    ].filter(Boolean).length;
+
+    if (neighbors < 2) {
+      return;
+    }
+
+    for (let dy = 1; dy <= lift; dy++) {
+      addEnhancedVoxel(enhanced, cell.x, cell.y + dy, cell.z, cell.color);
+    }
+  });
+
+  return [...enhanced.values()];
+}
+
+function enhanceVoxelResolution(
+  voxels: Array<{ x: number; y: number; z: number; color: number }>,
+  minimumVoxels = 1300
+) {
+  const source = buildVoxelSource(ensureSculpturalVolume(voxels));
 
   if (source.size >= minimumVoxels) {
     return [...source.values()];

@@ -9,6 +9,8 @@ export const COLORS = {
   TALON: 0xe5c100,
   FOX: 0xc85a24,
   FOX_DARK: 0x3f2418,
+  TIGER: 0xd86a1f,
+  TIGER_STRIPE: 0x1a1512,
 };
 
 export const CONFIG = {

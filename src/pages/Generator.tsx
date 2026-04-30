@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react';
 import {
   Box,
-  Cat,
   ChevronLeft,
   ChevronRight,
   Code2,
@@ -14,7 +13,6 @@ import {
   Image as ImageIcon,
   Pause,
   Play,
-  Rabbit,
   RefreshCw,
   Sparkles,
   Trash2,
@@ -286,8 +284,19 @@ export default function Generator() {
     loadModel(name, Generators[name]());
   }
 
-  function handlePresetRebuild(name: 'Cat' | 'Rabbit' | 'Twins' | 'Fox') {
-    rebuildModel(name, Generators[name]());
+  function getLocalPresetFromPrompt(value: string): 'Fox' | 'Tiger' | null {
+    const normalized = value.trim().toLowerCase();
+    if (normalized.includes('fox') || normalized.includes('\u72d0\u72f8') || normalized.includes('\u5c0f\u72d0\u72f8')) {
+      return 'Fox';
+    }
+    if (normalized.includes('tiger') || normalized.includes('\u8001\u864e') || normalized.includes('\u5c0f\u8001\u864e')) {
+      return 'Tiger';
+    }
+    return null;
+  }
+
+  function handleQuickPreset(name: 'Fox' | 'Tiger') {
+    loadModel(name, Generators[name]());
   }
 
   function handleToggleRotation() {
@@ -336,6 +345,24 @@ export default function Generator() {
     }
 
     try {
+      const promptPreset = mode === 'create' ? getLocalPresetFromPrompt(prompt) : null;
+      if (promptPreset) {
+        const voxelData = Generators[promptPreset]();
+        const brickData = voxelsToBricks(voxelData);
+        const buildName = promptPreset === 'Fox' ? 'Small Fox' : 'Tiger';
+        loadModel(buildName, voxelData, brickData);
+        await persistBuild({
+          name: buildName,
+          prompt,
+          mode: 'create',
+          baseModel: null,
+          data: voxelData,
+        });
+        setPrompt('');
+        setReferenceImage(null);
+        return;
+      }
+
       const normalizedPrompt = prompt.trim().toLowerCase();
       const shouldUseLocalFox =
         mode === 'create' &&
@@ -763,6 +790,7 @@ export default function Generator() {
       <div className="pointer-events-none fixed left-1/2 bottom-6 z-50 flex -translate-x-1/2 justify-center px-6">
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-[28px] border border-outline-variant/20 bg-surface-container-high/80 p-3 shadow-[0_24px_50px_rgba(0,0,0,0.34)] backdrop-blur-xl">
           <button
+            type="button"
             onClick={() => engineRef.current?.dismantle()}
             disabled={!canBreak}
             className="stud-button px-5 py-3 rounded-xl bg-primary text-on-primary font-headline font-bold flex items-center gap-2 disabled:opacity-50"
@@ -771,6 +799,7 @@ export default function Generator() {
             Break
           </button>
           <button
+            type="button"
             onClick={() => rebuildModel(currentBaseModel, currentModelData, currentModelBricks)}
             disabled={!canRebuild}
             className="stud-button px-5 py-3 rounded-xl bg-secondary text-on-secondary font-headline font-bold flex items-center gap-2 disabled:opacity-50"
@@ -824,32 +853,22 @@ export default function Generator() {
           <div className="space-y-4 shrink-0 bg-surface-container-low/50 p-4 rounded-2xl border border-outline-variant/10">
             <div className="flex items-center gap-2">
               <Hammer className="w-3 h-3 text-primary" />
-              <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">Quick Rebuilds</h3>
+              <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">Quick Models</h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => handlePresetRebuild('Cat')}
-                disabled={!canRebuild}
-                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold disabled:opacity-50 border border-outline-variant/10 hover:bg-surface-bright transition-all flex items-center justify-center gap-2 group"
-              >
-                <Cat className="w-4 h-4 text-secondary group-hover:scale-110 transition-transform" />
-                Cat
-              </button>
-              <button
-                onClick={() => handlePresetRebuild('Rabbit')}
-                disabled={!canRebuild}
-                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold disabled:opacity-50 flex items-center justify-center gap-2 border border-outline-variant/10 hover:bg-surface-bright transition-all group"
-              >
-                <Rabbit className="w-4 h-4 text-tertiary group-hover:scale-110 transition-transform" />
-                Rabbit
-              </button>
-              <button
-                onClick={() => handlePresetRebuild('Fox')}
-                disabled={!canRebuild}
-                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold disabled:opacity-50 flex items-center justify-center gap-2 border border-outline-variant/10 hover:bg-surface-bright transition-all group"
+                onClick={() => handleQuickPreset('Fox')}
+                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold border border-outline-variant/10 hover:bg-surface-bright transition-all flex items-center justify-center gap-2 group"
               >
                 <Dog className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
                 Fox
+              </button>
+              <button
+                onClick={() => handleQuickPreset('Tiger')}
+                className="stud-button py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold flex items-center justify-center gap-2 border border-outline-variant/10 hover:bg-surface-bright transition-all group"
+              >
+                <Dog className="w-4 h-4 text-secondary group-hover:scale-110 transition-transform" />
+                Tiger
               </button>
             </div>
           </div>

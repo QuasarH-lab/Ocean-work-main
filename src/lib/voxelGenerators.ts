@@ -203,7 +203,7 @@ export const Generators = {
 
   Fox: (): VoxelData[] => {
     const map = new Map<string, VoxelData>();
-    const baseY = CONFIG.FLOOR_Y + 1;
+    const footY = CONFIG.FLOOR_Y;
 
     const addBox = (
       x1: number,
@@ -223,45 +223,113 @@ export const Generators = {
       }
     };
 
-    // Low, long body so the silhouette reads as a fox rather than a generic cat.
-    generateSphere(map, -2, baseY + 3, 0, 3.3, COLORS.FOX, 0.75);
-    generateSphere(map, 2, baseY + 3, 0, 3.1, COLORS.FOX, 0.72);
-    addBox(-3, 3, baseY + 1, baseY + 2, -2, 2, COLORS.FOX);
-    addBox(-1, 3, baseY + 1, baseY + 2, -3, -3, COLORS.WHITE);
+    // Sitting body: stacked ellipses make the fox read as a sculpture, not a flat carpet.
+    generateSphere(map, 0, footY + 4, 0, 3.5, COLORS.FOX, 1.22);
+    generateSphere(map, 0, footY + 7, -1, 2.8, COLORS.FOX, 1.05);
+    addBox(-2, 2, footY + 2, footY + 8, -3, -3, COLORS.WHITE);
+    addBox(-1, 1, footY + 3, footY + 7, -4, -4, COLORS.WHITE);
 
-    // Four supported legs and dark paws.
+    // Front legs and paws are vertical supports, which also makes the animal less squat.
+    addBox(-2, -1, footY, footY + 4, -3, -2, COLORS.FOX_DARK);
+    addBox(1, 2, footY, footY + 4, -3, -2, COLORS.FOX_DARK);
+    addBox(-3, -1, footY, footY, -4, -3, COLORS.FOX_DARK);
+    addBox(1, 3, footY, footY, -4, -3, COLORS.FOX_DARK);
+    addBox(-4, -3, footY, footY + 2, 0, 1, COLORS.FOX);
+    addBox(3, 4, footY, footY + 2, 0, 1, COLORS.FOX);
+
+    // Tall curled tail behind the body with a white tip. It is attached at every layer.
+    addBox(-5, -3, footY + 1, footY + 5, 2, 4, COLORS.FOX);
+    addBox(-6, -4, footY + 5, footY + 9, 3, 5, COLORS.FOX);
+    addBox(-5, -3, footY + 9, footY + 12, 3, 4, COLORS.FOX);
+    addBox(-5, -3, footY + 12, footY + 13, 3, 4, COLORS.WHITE);
+    setBlock(map, -4, footY + 11, 2, COLORS.WHITE);
+
+    // Raised head, pointed muzzle, and big ears. Front is negative z, matching the camera.
+    generateSphere(map, 0, footY + 11, -1, 3.0, COLORS.FOX, 0.92);
+    addBox(-2, 2, footY + 9, footY + 11, -4, -3, COLORS.WHITE);
+    addBox(-1, 1, footY + 10, footY + 11, -5, -4, COLORS.WHITE);
+    setBlock(map, 0, footY + 10, -6, COLORS.BLACK);
+
+    addBox(-3, -2, footY + 13, footY + 15, -1, 0, COLORS.FOX);
+    addBox(2, 3, footY + 13, footY + 15, -1, 0, COLORS.FOX);
+    setBlock(map, -2, footY + 14, -1, COLORS.WHITE);
+    setBlock(map, 2, footY + 14, -1, COLORS.WHITE);
+
+    setBlock(map, -1, footY + 11, -4, COLORS.BLACK);
+    setBlock(map, 1, footY + 11, -4, COLORS.BLACK);
+    setBlock(map, -1, footY + 12, -3, COLORS.FOX_DARK);
+    setBlock(map, 1, footY + 12, -3, COLORS.FOX_DARK);
+
+    // Same-color contour bands add fur detail without creating floating freckles.
+    addBox(-3, 3, footY + 6, footY + 6, -2, -2, COLORS.LIGHT);
+    addBox(-3, 3, footY + 5, footY + 5, 2, 2, COLORS.FOX_DARK);
+
+    return Array.from(map.values());
+  },
+
+  Tiger: (): VoxelData[] => {
+    const map = new Map<string, VoxelData>();
+    const footY = CONFIG.FLOOR_Y;
+
+    const addBox = (
+      x1: number,
+      x2: number,
+      y1: number,
+      y2: number,
+      z1: number,
+      z2: number,
+      color: number
+    ) => {
+      for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+          for (let z = z1; z <= z2; z++) {
+            setBlock(map, x, y, z, color);
+          }
+        }
+      }
+    };
+
+    // Standing tiger body with enough height to avoid the flat-animal problem.
+    generateSphere(map, -2, footY + 5, 0, 3.8, COLORS.TIGER, 0.95);
+    generateSphere(map, 2, footY + 5, 0, 3.6, COLORS.TIGER, 0.92);
+    addBox(-4, 4, footY + 3, footY + 6, -3, 2, COLORS.TIGER);
+    addBox(-2, 3, footY + 3, footY + 4, -4, -4, COLORS.WHITE);
+
+    // Four sturdy legs and paws.
     [-4, -1, 2, 5].forEach((x) => {
-      addBox(x, x + 1, CONFIG.FLOOR_Y, baseY + 1, -1, 0, COLORS.FOX_DARK);
-      setBlock(map, x, CONFIG.FLOOR_Y, -2, COLORS.FOX_DARK);
-      setBlock(map, x + 1, CONFIG.FLOOR_Y, -2, COLORS.FOX_DARK);
+      addBox(x, x + 1, footY, footY + 4, -1, 1, COLORS.TIGER);
+      addBox(x, x + 1, footY, footY, -2, 1, COLORS.TIGER_STRIPE);
     });
 
-    // Big bushy tail curls upward behind the body, with a white supported tip.
-    addBox(-8, -5, baseY + 1, baseY + 2, 1, 3, COLORS.FOX);
-    addBox(-10, -7, baseY + 2, baseY + 4, 2, 4, COLORS.FOX);
-    addBox(-11, -9, baseY + 4, baseY + 6, 3, 5, COLORS.FOX);
-    addBox(-12, -10, baseY + 5, baseY + 6, 4, 5, COLORS.WHITE);
-    setBlock(map, -12, baseY + 4, 4, COLORS.WHITE);
+    // Raised head and muzzle, facing negative z.
+    generateSphere(map, 5, footY + 8, -1, 3.1, COLORS.TIGER, 0.9);
+    addBox(3, 7, footY + 6, footY + 8, -4, -3, COLORS.WHITE);
+    addBox(4, 6, footY + 7, footY + 8, -5, -4, COLORS.WHITE);
+    setBlock(map, 5, footY + 7, -6, COLORS.BLACK);
 
-    // Head, cheeks, pointed muzzle, and ears. Front is negative z, matching the app camera.
-    generateSphere(map, 5, baseY + 6, -1, 2.8, COLORS.FOX, 0.85);
-    addBox(4, 6, baseY + 4, baseY + 5, -4, -3, COLORS.WHITE);
-    addBox(5, 5, baseY + 5, baseY + 6, -5, -4, COLORS.WHITE);
-    setBlock(map, 5, baseY + 5, -6, COLORS.BLACK);
+    // Rounded ears with dark backs.
+    addBox(3, 4, footY + 10, footY + 12, -1, 0, COLORS.TIGER);
+    addBox(6, 7, footY + 10, footY + 12, -1, 0, COLORS.TIGER);
+    setBlock(map, 3, footY + 11, -1, COLORS.TIGER_STRIPE);
+    setBlock(map, 7, footY + 11, -1, COLORS.TIGER_STRIPE);
 
-    addBox(3, 4, baseY + 8, baseY + 10, -1, 0, COLORS.FOX);
-    addBox(6, 7, baseY + 8, baseY + 10, -1, 0, COLORS.FOX);
-    setBlock(map, 4, baseY + 9, -1, COLORS.WHITE);
-    setBlock(map, 6, baseY + 9, -1, COLORS.WHITE);
+    // Eyes, brow, and forehead stripe pattern.
+    setBlock(map, 4, footY + 8, -4, COLORS.BLACK);
+    setBlock(map, 6, footY + 8, -4, COLORS.BLACK);
+    addBox(4, 6, footY + 10, footY + 10, -4, -4, COLORS.TIGER_STRIPE);
+    setBlock(map, 5, footY + 11, -3, COLORS.TIGER_STRIPE);
 
-    setBlock(map, 4, baseY + 6, -4, COLORS.BLACK);
-    setBlock(map, 6, baseY + 6, -4, COLORS.BLACK);
-    setBlock(map, 4, baseY + 7, -3, COLORS.FOX_DARK);
-    setBlock(map, 6, baseY + 7, -3, COLORS.FOX_DARK);
+    // Body stripes are same-layer supported bands, not floating specks.
+    [-5, -2, 1, 4].forEach((x, index) => {
+      addBox(x, x, footY + 5, footY + 8, -3, -3, COLORS.TIGER_STRIPE);
+      addBox(x, x, footY + 6 + (index % 2), footY + 7 + (index % 2), 2, 2, COLORS.TIGER_STRIPE);
+    });
+    [-3, 0, 3].forEach((x) => addBox(x, x + 1, footY + 8, footY + 8, -1, 1, COLORS.TIGER_STRIPE));
 
-    // A few same-color contour bands add life without creating floating freckles.
-    addBox(-4, 1, baseY + 5, baseY + 5, -2, -2, COLORS.LIGHT);
-    addBox(-2, 4, baseY + 4, baseY + 4, 2, 2, COLORS.FOX_DARK);
+    // Curved tail with a dark tip.
+    addBox(-8, -5, footY + 3, footY + 4, 2, 3, COLORS.TIGER);
+    addBox(-10, -8, footY + 4, footY + 6, 3, 4, COLORS.TIGER);
+    addBox(-11, -10, footY + 6, footY + 8, 4, 5, COLORS.TIGER_STRIPE);
 
     return Array.from(map.values());
   },

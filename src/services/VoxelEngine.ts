@@ -356,7 +356,7 @@ export class VoxelEngine {
 
     this.framingCenter.copy(center);
     this.framingCenter.y = Math.max(center.y, 4);
-    this.framingRadius = maxDimension * 0.72;
+    this.framingRadius = maxDimension * 0.92;
     this.applyCameraFraming();
   }
 
@@ -365,13 +365,13 @@ export class VoxelEngine {
     const fov = THREE.MathUtils.degToRad(this.camera.fov);
     const horizontalFov = 2 * Math.atan(Math.tan(fov / 2) * aspect);
     const fitFov = Math.min(fov, horizontalFov);
-    const distance = (this.framingRadius * 1.25) / Math.tan(fitFov / 2);
+    const distance = (this.framingRadius * 1.58) / Math.tan(fitFov / 2);
 
     this.controls.target.lerp(this.framingCenter, 1);
     this.camera.position.set(
-      this.framingCenter.x + distance * 0.62,
-      this.framingCenter.y + distance * 0.52,
-      this.framingCenter.z - distance
+      this.framingCenter.x + distance * 0.42,
+      this.framingCenter.y + distance * 0.32,
+      this.framingCenter.z - distance * 1.04
     );
     this.camera.lookAt(this.framingCenter);
     if (this.scene.fog instanceof THREE.Fog) {
