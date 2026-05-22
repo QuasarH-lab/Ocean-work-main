@@ -1,4 +1,4 @@
-import { BrickData, BrickType, VoxelData } from '../5_types';
+import { BrickData, BrickType, VoxelData } from '../5_types.js';
 import {
   analyzeBrickConnectivity,
   createInterlockedFoundationBricks,
@@ -7,7 +7,7 @@ import {
   scoreBrickSeamInterlock,
   scoreSeamInterlock,
   type ConstraintBrick,
-} from './physicalConstraints';
+} from './5_physicalConstraints.js';
 
 function cellKey(x: number, y: number, z: number): string {
   return `${x},${y},${z}`;

@@ -1,1 +1,1 @@
-export * from './3_voxelGenerators';
+export * from './3_voxelGenerators.js';

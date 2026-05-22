@@ -1,5 +1,5 @@
-import type { VoxelData } from '../5_types';
-import { COLORS, CONFIG } from './voxelConstants.js';
+import type { VoxelData } from '../5_types.js';
+import { COLORS, CONFIG } from './3_voxelConstants.js';
 
 function setBlock(map: Map<string, VoxelData>, x: number, y: number, z: number, color: number) {
   const rx = Math.round(x);

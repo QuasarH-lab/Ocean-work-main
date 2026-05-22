@@ -20,10 +20,10 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { bricksToVoxels, normalizeBricks, voxelsToBricks } from '../lib/5_brickLayout';
-import { Generators } from '../lib/3_voxelGenerators';
-import { VoxelEngine } from '../services/3_VoxelEngine';
+import { cn } from '../lib/utils.js';
+import { bricksToVoxels, normalizeBricks, voxelsToBricks } from '../lib/5_brickLayout.js';
+import { Generators } from '../lib/3_voxelGenerators.js';
+import { VoxelEngine } from '../services/3_VoxelEngine.js';
 import {
   AppState,
   BrickData,
@@ -32,7 +32,7 @@ import {
   PersistedBuildRecord,
   SavedModel,
   VoxelData,
-} from '../5_types';
+} from '../5_types.js';
 
 const INITIAL_HISTORY: BuildHistory[] = [];
 

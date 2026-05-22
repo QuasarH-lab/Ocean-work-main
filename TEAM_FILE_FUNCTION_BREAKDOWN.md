@@ -17,19 +17,21 @@
 
 这些文件不能完全删除或随意改名，因为工具链会按固定路径查找它们。当前做法是：保留原文件名，但文件内容只转发到编号实现文件。
 
+部署注意：所有会在 Vercel/Node ESM 运行时被加载的转发入口和相对模块导入，都在源码中使用 `.js` 后缀。例如 `src/lib/voxelConstants.ts` 写作 `export * from './3_voxelConstants.js'`。TypeScript/Vite 会在开发和构建时把这个 `.js` 路径解析回对应 `.ts` 源文件，部署后 Node 也能找到编译后的 `.js` 文件。
+
 | 兼容入口文件 | 实际实现文件 |
 |---|---|
-| `src/App.tsx` | `src/1_App.tsx` |
+| `src/App.tsx` | `src/1_App.tsx`，转发路径使用 `.js` |
 | `src/main.tsx` | `src/1_main.tsx` |
 | `src/index.css` | `src/1_index.css` |
-| `src/components/Layout.tsx` | `src/components/1_Layout.tsx` |
-| `src/pages/Generator.tsx` | `src/pages/2_Generator.tsx` |
-| `src/services/VoxelEngine.ts` | `src/services/3_VoxelEngine.ts` |
-| `src/lib/voxelConstants.ts` | `src/lib/3_voxelConstants.ts` |
-| `src/lib/voxelGenerators.ts` | `src/lib/3_voxelGenerators.ts` |
-| `src/lib/brickLayout.ts` | `src/lib/5_brickLayout.ts` |
-| `src/lib/physicalConstraints.ts` | `src/lib/5_physicalConstraints.ts` |
-| `src/types.ts` | `src/5_types.ts` |
+| `src/components/Layout.tsx` | `src/components/1_Layout.tsx`，转发路径使用 `.js` |
+| `src/pages/Generator.tsx` | `src/pages/2_Generator.tsx`，转发路径使用 `.js` |
+| `src/services/VoxelEngine.ts` | `src/services/3_VoxelEngine.ts`，转发路径使用 `.js` |
+| `src/lib/voxelConstants.ts` | `src/lib/3_voxelConstants.ts`，转发路径使用 `.js` |
+| `src/lib/voxelGenerators.ts` | `src/lib/3_voxelGenerators.ts`，转发路径使用 `.js` |
+| `src/lib/brickLayout.ts` | `src/lib/5_brickLayout.ts`，转发路径使用 `.js` |
+| `src/lib/physicalConstraints.ts` | `src/lib/5_physicalConstraints.ts`，转发路径使用 `.js` |
+| `src/types.ts` | `src/5_types.ts`，转发路径使用 `.js` |
 | `api/builds.ts` | `api/4_builds.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
 | `api/generate-voxel.ts` | `api/5_generate-voxel.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
 | `server/database.ts` | `server/4_database.ts` |

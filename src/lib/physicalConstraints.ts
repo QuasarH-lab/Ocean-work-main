@@ -1,1 +1,1 @@
-export * from './5_physicalConstraints';
+export * from './5_physicalConstraints.js';

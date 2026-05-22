@@ -1,1 +1,1 @@
-import './5_physical-constraints.test';
+import './5_physical-constraints.test.js';

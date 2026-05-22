@@ -1,1 +1,1 @@
-export * from './5_brickLayout';
+export * from './5_brickLayout.js';

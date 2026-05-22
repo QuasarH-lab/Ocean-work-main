@@ -1,1 +1,1 @@
-export { default } from './4_vite.config.impl';
+export { default } from './4_vite.config.impl.js';

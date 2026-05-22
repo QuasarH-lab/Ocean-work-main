@@ -1,1 +1,1 @@
-export { default } from './2_Generator';
+export { default } from './2_Generator.js';

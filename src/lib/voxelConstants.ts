@@ -1,1 +1,1 @@
-export * from './3_voxelConstants';
+export * from './3_voxelConstants.js';

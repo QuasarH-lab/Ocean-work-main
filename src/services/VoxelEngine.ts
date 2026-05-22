@@ -1,1 +1,1 @@
-export { VoxelEngine } from './3_VoxelEngine';
+export { VoxelEngine } from './3_VoxelEngine.js';

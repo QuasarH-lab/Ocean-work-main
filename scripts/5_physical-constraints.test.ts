@@ -1,4 +1,4 @@
-import { voxelsToBricks } from '../src/lib/5_brickLayout';
+import { voxelsToBricks } from '../src/lib/5_brickLayout.js';
 import {
   analyzeBrickConnectivity,
   enforceVoxelSupport,
@@ -6,7 +6,7 @@ import {
   scoreSeamInterlock,
   type ConstraintBrick,
   type ConstraintVoxel,
-} from '../src/lib/5_physicalConstraints';
+} from '../src/lib/5_physicalConstraints.js';
 
 function assert(condition: unknown, message: string) {
   if (!condition) {

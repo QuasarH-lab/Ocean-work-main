@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { AppState, BrickData, RebuildTarget, SimulationBrick, VoxelData } from '../5_types';
-import { COLORS, CONFIG } from '../lib/3_voxelConstants';
-import { bricksToVoxels, voxelsToBricks } from '../lib/5_brickLayout';
+import { AppState, BrickData, RebuildTarget, SimulationBrick, VoxelData } from '../5_types.js';
+import { COLORS, CONFIG } from '../lib/3_voxelConstants.js';
+import { bricksToVoxels, voxelsToBricks } from '../lib/5_brickLayout.js';
 
 export class VoxelEngine {
   private container: HTMLElement;

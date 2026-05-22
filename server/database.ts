@@ -1,1 +1,1 @@
-export * from './4_database';
+export * from './4_database.js';

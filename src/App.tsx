@@ -1,1 +1,1 @@
-export { default } from './1_App';
+export { default } from './1_App.js';
