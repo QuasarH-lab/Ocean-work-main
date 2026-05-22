@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #0b1326;
+  --color-surface: #0b1326;
+  --color-surface-bright: #31394d;
+  --color-surface-variant: #2d3449;
+  --color-surface-dim: #0b1326;
+  
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+
+  --color-primary: #ffb4a9;
+  --color-on-primary: #690002;
+  --color-primary-container: #b20006;
+  --color-on-primary-container: #ffbdb4;
+
+  --color-secondary: #fff3d7;
+  --color-on-secondary: #3c2f00;
+  --color-secondary-container: #ffd336;
+  --color-on-secondary-container: #715b00;
+
+  --color-tertiary: #abc7ff;
+  --color-on-tertiary: #002f65;
+  --color-tertiary-container: #0055ad;
+  --color-on-tertiary-container: #b5ceff;
+
+  --color-outline: #8c919d;
+  --color-outline-variant: #424752;
+  
+  --color-on-surface: #dae2fd;
+  --color-on-surface-variant: #c2c6d4;
+  --color-on-background: #dae2fd;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-background font-body antialiased;
+  }
+}
+
+.glass-panel {
+  background: rgba(45, 52, 73, 0.6);
+  backdrop-filter: blur(20px);
+}
+
+.stud-button {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.stud-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 180, 169, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #abc7ff;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #ffb4a9;
+  background-clip: content-box;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    background: #171f33;
+    height: 8px;
+    border-radius: 4px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 4px;
+    background: #abc7ff;
+    cursor: pointer;
+    margin-top: -6px;
+    box-shadow: 0 0 10px rgba(171, 199, 255, 0.4);
+}
