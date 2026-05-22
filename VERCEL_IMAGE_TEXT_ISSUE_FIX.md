@@ -23,7 +23,7 @@
 - 文件：`src/pages/Generator.tsx`
 - 主流程改为优先请求 `POST /api/generate-voxel`。
 - 服务端返回统一 `voxels` 数组，前端直接渲染。
-- 保留 AI Studio 兼容回退：当 `/api` 不可用且浏览器端有 `GEMINI_API_KEY` 时，仍可走旧逻辑。
+- 前端统一走 `/api/generate-voxel`，密钥只保存在服务端环境变量里。
 
 3. 配置与文档更新：
 - `.env.example` 增加 Vercel 环境变量说明。

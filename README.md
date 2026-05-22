@@ -21,7 +21,7 @@ View your app in AI Studio: https://ai.studio/apps/dbd4bafa-383b-44df-a6d1-5a0f5
 
 ## Vercel note (important)
 
-If text/image modeling works in AI Studio but fails on Vercel, the common cause is that browser-side model calls do not have a safe/runtime server key path in Vercel deployment.
+If text/image modeling works locally but fails on Vercel, the common cause is that browser-side model calls do not have a safe/runtime server key path in Vercel deployment.
 
 This project now provides a server endpoint:
 
