@@ -30,8 +30,8 @@
 | `src/lib/brickLayout.ts` | `src/lib/5_brickLayout.ts` |
 | `src/lib/physicalConstraints.ts` | `src/lib/5_physicalConstraints.ts` |
 | `src/types.ts` | `src/5_types.ts` |
-| `api/builds.ts` | `api/4_builds.impl.ts` |
-| `api/generate-voxel.ts` | `api/5_generate-voxel.impl.ts` |
+| `api/builds.ts` | `api/4_builds.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
+| `api/generate-voxel.ts` | `api/5_generate-voxel.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
 | `server/database.ts` | `server/4_database.ts` |
 | `db/schema.sql` | `db/4_schema.sql` |
 | `vite.config.ts` | `4_vite.config.impl.ts` |
@@ -194,7 +194,7 @@
 
 ### 兼容入口
 
-- `api/builds.ts`: 转发 `api/4_builds.impl.ts`。
+- `api/builds.ts`: 转发 `api/4_builds.impl.ts`，源码中写作 `./4_builds.impl.js`，避免 Vercel 部署后出现 `ERR_MODULE_NOT_FOUND`。
 - `server/database.ts`: 转发 `server/4_database.ts`。
 - `db/schema.sql`: 保留兼容说明，正式 schema 在 `db/4_schema.sql`。
 - `vite.config.ts`: 转发 `4_vite.config.impl.ts`。
@@ -348,7 +348,7 @@
 
 ### 兼容入口
 
-- `api/generate-voxel.ts`: 转发 `api/5_generate-voxel.impl.ts`。
+- `api/generate-voxel.ts`: 转发 `api/5_generate-voxel.impl.ts`，源码中写作 `./5_generate-voxel.impl.js`，避免 Vercel 部署后出现 `ERR_MODULE_NOT_FOUND`。
 - `src/lib/brickLayout.ts`: 转发 `src/lib/5_brickLayout.ts`。
 - `src/lib/physicalConstraints.ts`: 转发 `src/lib/5_physicalConstraints.ts`。
 - `src/types.ts`: 转发 `src/5_types.ts`。
