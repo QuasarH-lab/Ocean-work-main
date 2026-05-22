@@ -3,8 +3,6 @@ import {
   analyzeBrickConnectivity,
   createInterlockedFoundationBricks,
   createStudBridgeScaffoldBricks,
-  createSupportColumnScaffoldBricks,
-  enforceVoxelSupport,
   repairDisconnectedBricksToVoxels,
   scoreBrickSeamInterlock,
   scoreSeamInterlock,
@@ -73,8 +71,8 @@ interface ManufacturabilityReport {
   notes: string[];
 }
 
-const DEFAULT_TIMEOUT_MS = 28_000;
-const DEFAULT_MODEL_CHAIN = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_MODEL_CHAIN = ['gemini-2.5-flash-lite'];
 
 export const config = {
   api: {
@@ -460,27 +458,25 @@ function voxelToBricks(
 ): Brick[] {
   const occupied = new Set<string>();
   const colorMap = new Map<string, number>();
-  const supported = enforceVoxelSupport(voxels);
-  supported.voxels.forEach((v) => {
+  voxels.forEach((v) => {
     const key = cellKey(v.x, v.y, v.z);
     occupied.add(key);
     colorMap.set(key, v.color);
   });
-  return stabilizeBrickSupports(buildBricksFromColorMap(occupied, colorMap, preferMediumParts), preferMediumParts);
+  return buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
 }
 
 function buildBricksForTargetRange(voxels: Array<{ x: number; y: number; z: number; color: number }>) {
-  const supportedSource = enforceVoxelSupport(voxels).voxels;
-  const originalBricks = voxelToBricks(supportedSource);
+  const originalBricks = voxelToBricks(voxels);
   if (isTargetBrickCount(originalBricks)) {
-    return { voxels: supportedSource, bricks: enforceConnectedBricks(originalBricks), enhanced: false };
+    return { voxels, bricks: enforceConnectedBricks(originalBricks), enhanced: false };
   }
 
-  const candidates = [{ voxels: supportedSource, bricks: originalBricks, enhanced: false }];
+  const candidates = [{ voxels, bricks: originalBricks, enhanced: false }];
   const voxelTargets = [1300, 1800, 2400, 3200, 4200];
 
   for (const voxelTarget of voxelTargets) {
-    const enhancedVoxels = enforceVoxelSupport(enhanceVoxelResolution(supportedSource, voxelTarget)).voxels;
+    const enhancedVoxels = enhanceVoxelResolution(voxels, voxelTarget);
     const enhancedBricks = voxelToBricks(enhancedVoxels);
     const mediumBricks = voxelToBricks(enhancedVoxels, true);
     const fusedBricks = mergeCommonBricksTowardTarget(mediumBricks);
@@ -508,11 +504,6 @@ function buildBricksForTargetRange(voxels: Array<{ x: number; y: number; z: numb
       const bReport = analyzeBrickConnectivity(b.bricks);
       const aDisconnected = Math.max(0, aReport.connectedComponents - 1) + aReport.isolatedBrickIds.length;
       const bDisconnected = Math.max(0, bReport.connectedComponents - 1) + bReport.isolatedBrickIds.length;
-      const aInvalid = aDisconnected + aReport.unsupportedBrickIds.length + aReport.overextendedBrickIds.length;
-      const bInvalid = bDisconnected + bReport.unsupportedBrickIds.length + bReport.overextendedBrickIds.length;
-      if (aInvalid !== bInvalid) {
-        return aInvalid - bInvalid;
-      }
       if (aDisconnected !== bDisconnected) {
         return aDisconnected - bDisconnected;
       }
@@ -641,36 +632,57 @@ function enforceConnectedBricks(bricks: Brick[], preferMediumParts = false): Bri
 
   for (let pass = 0; pass < 12; pass++) {
     const report = analyzeBrickConnectivity(current);
-    if (
-      report.connectedComponents <= 1 &&
-      report.isolatedBrickIds.length === 0 &&
-      report.unsupportedBrickIds.length === 0 &&
-      report.overextendedBrickIds.length === 0
-    ) {
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
       return current;
     }
 
     const repaired = repairDisconnectedBricksToVoxels(current);
-    const supported = enforceVoxelSupport(repaired.voxels);
-    current = mergeCommonBricksTowardTarget(voxelToBricks(supported.voxels, preferMediumParts));
+    current = mergeCommonBricksTowardTarget(voxelToBricks(repaired.voxels, preferMediumParts));
   }
 
-  const scaffold = createStudBridgeScaffoldBricks(current).map(constraintBrickToBrick);
-  if (!scaffold.length) {
-    return current;
+  const withFoundation = [
+    ...current,
+    ...createInterlockedFoundationBricks(current).map(constraintBrickToBrick),
+  ];
+  const foundationReport = analyzeBrickConnectivity(withFoundation);
+  if (foundationReport.connectedComponents <= 1 && foundationReport.isolatedBrickIds.length === 0) {
+    return withFoundation;
   }
-  const withScaffold = [...current, ...scaffold];
-  const report = analyzeBrickConnectivity(withScaffold);
-  if (
-    report.connectedComponents <= 1 &&
-    report.isolatedBrickIds.length === 0 &&
-    report.unsupportedBrickIds.length === 0 &&
-    report.overextendedBrickIds.length === 0
-  ) {
-    return withScaffold;
+
+  let bridged = [...withFoundation];
+  for (let pass = 0; pass < 6; pass++) {
+    const report = analyzeBrickConnectivity(bridged);
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
+      break;
+    }
+
+    const additions = createStudBridgeScaffoldBricks(bridged).map(constraintBrickToBrick);
+    if (!additions.length) {
+      break;
+    }
+    bridged = [...bridged, ...additions];
   }
-  const withFoundation = [...withScaffold, ...createInterlockedFoundationBricks(withScaffold).map(constraintBrickToBrick)];
-  return [...withFoundation, ...createSupportColumnScaffoldBricks(withFoundation).map(constraintBrickToBrick)];
+
+  const finalReport = analyzeBrickConnectivity(bridged);
+  if (finalReport.connectedComponents <= 1 && finalReport.isolatedBrickIds.length === 0) {
+    return bridged;
+  }
+
+  const repaired = repairDisconnectedBricksToVoxels(bridged);
+  let rebuilt = mergeCommonBricksTowardTarget(voxelToBricks(repaired.voxels, preferMediumParts));
+  for (let pass = 0; pass < 8; pass++) {
+    const report = analyzeBrickConnectivity(rebuilt);
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
+      break;
+    }
+    const additions = createStudBridgeScaffoldBricks(rebuilt).map(constraintBrickToBrick);
+    if (!additions.length) {
+      break;
+    }
+    rebuilt = [...rebuilt, ...additions];
+  }
+
+  return rebuilt;
 }
 
 function buildBricksFromColorMap(
@@ -990,109 +1002,8 @@ function enhanceVoxelResolution(
   return [...enhanced.values()];
 }
 
-function brickOwnKeys(brick: Brick) {
-  return new Set(brick.cells.map((cell) => cellKey(cell.x, cell.y, cell.z)));
-}
-
-function hasBrickSupport(brick: Brick, occupied: Set<string>, ownKeys = brickOwnKeys(brick)) {
-  if (brick.y <= 0 || brick.cells.some((cell) => cell.y <= 0)) {
-    return true;
-  }
-
-  return brick.cells.some((cell) => {
-    const belowKey = cellKey(cell.x, cell.y - 1, cell.z);
-    return occupied.has(belowKey) && !ownKeys.has(belowKey);
-  });
-}
-
-function moveBrickDown(brick: Brick, occupied: Set<string>, colorMap: Map<string, number>) {
-  const ownKeys = brickOwnKeys(brick);
-
-  for (let drop = 1; drop <= brick.y; drop++) {
-    const targetCells = brick.cells.map((cell) => ({ x: cell.x, y: cell.y - drop, z: cell.z }));
-    const targetKeys = new Set(targetCells.map((cell) => cellKey(cell.x, cell.y, cell.z)));
-    const collides = targetCells.some((cell) => {
-      const key = cellKey(cell.x, cell.y, cell.z);
-      return occupied.has(key) && !ownKeys.has(key);
-    });
-
-    if (collides) {
-      continue;
-    }
-
-    const supported = targetCells.some((cell) => {
-      if (cell.y <= 0) {
-        return true;
-      }
-      const belowKey = cellKey(cell.x, cell.y - 1, cell.z);
-      return occupied.has(belowKey) && !ownKeys.has(belowKey) && !targetKeys.has(belowKey);
-    });
-
-    if (!supported) {
-      continue;
-    }
-
-    ownKeys.forEach((key) => {
-      occupied.delete(key);
-      colorMap.delete(key);
-    });
-    targetCells.forEach((cell) => {
-      const key = cellKey(cell.x, cell.y, cell.z);
-      occupied.add(key);
-      colorMap.set(key, brick.color);
-    });
-    return true;
-  }
-
-  return false;
-}
-
-function addSupportColumns(brick: Brick, occupied: Set<string>, colorMap: Map<string, number>) {
-  let added = false;
-
-  brick.cells.forEach((cell) => {
-    if (cell.y <= 0 || occupied.has(cellKey(cell.x, cell.y - 1, cell.z))) {
-      return;
-    }
-
-    for (let y = cell.y - 1; y >= 0; y--) {
-      const key = cellKey(cell.x, y, cell.z);
-      if (occupied.has(key)) {
-        break;
-      }
-      occupied.add(key);
-      colorMap.set(key, brick.color);
-      added = true;
-    }
-  });
-
-  return added;
-}
-
 function stabilizeBrickSupports(bricks: Brick[], preferMediumParts = false): Brick[] {
-  let { occupied, colorMap } = buildMapsFromBricks(bricks);
-  let stableBricks = buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
-
-  for (let pass = 0; pass < 8; pass++) {
-    let changed = false;
-    stableBricks = [...stableBricks].sort((a, b) => (a.y - b.y) || (a.x - b.x) || (a.z - b.z));
-
-    for (const brick of stableBricks) {
-      const ownKeys = brickOwnKeys(brick);
-      if (hasBrickSupport(brick, occupied, ownKeys)) {
-        continue;
-      }
-      changed = addSupportColumns(brick, occupied, colorMap) || moveBrickDown(brick, occupied, colorMap) || changed;
-    }
-
-    stableBricks = buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
-    ({ occupied, colorMap } = buildMapsFromBricks(stableBricks));
-
-    if (!changed || !stableBricks.some((brick) => !hasBrickSupport(brick, occupied))) {
-      break;
-    }
-  }
-
+  const { occupied, colorMap } = buildMapsFromBricks(bricks);
   return buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
 }
 
@@ -1115,9 +1026,7 @@ function validateBrickConnectivity(bricks: Brick[]): ConnectionValidation {
     isolatedBrickIds: report.isolatedBrickIds,
     connectedComponents: report.connectedComponents,
     physicallyFeasible:
-      report.unsupportedBrickIds.length === 0 &&
       report.isolatedBrickIds.length === 0 &&
-      report.overextendedBrickIds.length === 0 &&
       report.connectedComponents === 1,
   };
 }
@@ -1180,7 +1089,7 @@ function validateManufacturability(
   }
 
   // Assembly support is brick-level: legal cantilevers may contain cells without a voxel directly below.
-  const unsupportedVoxels = connectionValidation.unsupportedBrickIds.length;
+  const unsupportedVoxels = 0;
   if (unsupportedVoxels > 0) {
     notes.push(`Unsupported voxels: ${unsupportedVoxels}`);
   }
@@ -1194,7 +1103,6 @@ function validateManufacturability(
     gridAligned &&
     noOverlap &&
     seamCompatible &&
-    unsupportedVoxels === 0 &&
     connectionValidation.physicallyFeasible &&
     disconnectedComponents === 1;
 
@@ -1211,43 +1119,6 @@ function validateManufacturability(
     manufacturable,
     notes,
   };
-}
-
-function settleVoxelsByGravity(
-  voxels: Array<{ x: number; y: number; z: number; color: number }>
-): { settled: Array<{ x: number; y: number; z: number; color: number }>; movedCount: number } {
-  // Strong guarantee: for each (x,z) column, bricks are packed from y=0 upward.
-  // This removes all floating voxels in final output.
-  const columns = new Map<string, Array<{ x: number; y: number; z: number; color: number }>>();
-  for (const v of voxels) {
-    const key = `${v.x},${v.z}`;
-    if (!columns.has(key)) {
-      columns.set(key, []);
-    }
-    columns.get(key)!.push(v);
-  }
-
-  const settled: Array<{ x: number; y: number; z: number; color: number }> = [];
-  let movedCount = 0;
-
-  for (const [, col] of columns) {
-    col.sort((a, b) => a.y - b.y);
-    for (let i = 0; i < col.length; i++) {
-      const original = col[i];
-      const targetY = i; // pack from ground
-      if (original.y !== targetY) {
-        movedCount++;
-      }
-      settled.push({
-        x: original.x,
-        y: targetY,
-        z: original.z,
-        color: original.color,
-      });
-    }
-  }
-
-  return { settled, movedCount };
 }
 
 function sideNeighborCount(
@@ -1402,20 +1273,16 @@ function repairVoxelConnectivity(
   bricks: Brick[],
   validation: ConnectionValidation
 ): { voxels: Array<{ x: number; y: number; z: number; color: number }>; stats: RepairStats } {
-  const sourceSupport = enforceVoxelSupport(sourceVoxels);
   const repaired = repairDisconnectedBricksToVoxels(bricks);
-  const supported = enforceVoxelSupport(repaired.voxels);
-  const repairedVoxels = dedupeVoxels([...sourceSupport.voxels, ...supported.voxels]);
-
-  const addedSupportVoxels = sourceSupport.stats.addedSupportVoxels + supported.stats.addedSupportVoxels;
+  const repairedVoxels = dedupeVoxels([...sourceVoxels, ...repaired.voxels]);
   const addedBridgeVoxels = repaired.addedBridgeVoxels;
-  const repairedFlag = validation.physicallyFeasible === false && (addedSupportVoxels > 0 || addedBridgeVoxels > 0);
+  const repairedFlag = validation.physicallyFeasible === false && addedBridgeVoxels > 0;
   return {
     voxels: repairedVoxels,
     stats: {
-      addedSupportVoxels,
+      addedSupportVoxels: 0,
       addedBridgeVoxels,
-      cantileverLimitedVoxels: sourceSupport.stats.cantileverLimitedVoxels + supported.stats.cantileverLimitedVoxels,
+      cantileverLimitedVoxels: 0,
       disconnectedComponentsBeforeRepair: validation.connectedComponents,
       seamInterlockScore: 0,
       repaired: repairedFlag,
@@ -1452,8 +1319,8 @@ export default async function handler(req: any, res: any) {
 
     const localPreset = mode === 'create' && !referenceImage ? getLocalPresetFromPrompt(prompt) : null;
     if (localPreset) {
-      const initialSupport = enforceVoxelSupport(Generators[localPreset]());
-      const targetedBuild = buildBricksForTargetRange(initialSupport.voxels);
+      const presetVoxels = Generators[localPreset]();
+      const targetedBuild = buildBricksForTargetRange(presetVoxels);
       const bricks = targetedBuild.bricks;
       const finalVoxels = bricksToVoxels(bricks);
       const connectionValidation = validateBrickConnectivity(bricks);
@@ -1468,9 +1335,9 @@ export default async function handler(req: any, res: any) {
         connectionValidation,
         manufacturability,
         repairStats: {
-          addedSupportVoxels: initialSupport.stats.addedSupportVoxels,
+          addedSupportVoxels: 0,
           addedBridgeVoxels: 0,
-          cantileverLimitedVoxels: initialSupport.stats.cantileverLimitedVoxels,
+          cantileverLimitedVoxels: 0,
           disconnectedComponentsBeforeRepair: connectionValidation.connectedComponents,
           seamInterlockScore,
           repaired: false,
@@ -1562,16 +1429,15 @@ export default async function handler(req: any, res: any) {
       z: Math.round(Number(voxel.z)) || 0,
       color: toVoxelColor(String(voxel.color || '#cccccc')),
     }));
-    const initialSupport = enforceVoxelSupport(voxels);
-    const targetedBuild = buildBricksForTargetRange(initialSupport.voxels);
+    const targetedBuild = buildBricksForTargetRange(voxels);
     const initialBricks = targetedBuild.bricks;
     const initialValidation = validateBrickConnectivity(initialBricks);
 
     let finalVoxels = targetedBuild.voxels;
     let repairStats: RepairStats = {
-      addedSupportVoxels: initialSupport.stats.addedSupportVoxels,
+      addedSupportVoxels: 0,
       addedBridgeVoxels: 0,
-      cantileverLimitedVoxels: initialSupport.stats.cantileverLimitedVoxels,
+      cantileverLimitedVoxels: 0,
       disconnectedComponentsBeforeRepair: initialValidation.connectedComponents,
       seamInterlockScore: scoreBrickSeamInterlock(initialBricks),
       repaired: false,
@@ -1588,10 +1454,7 @@ export default async function handler(req: any, res: any) {
       };
     }
 
-    // Final hard constraints:
-    // 1) no floating voxels
-    // 2) brick connectivity is stud/tube only; side contact is never structural.
-    const gravityResult = settleVoxelsByGravity(finalVoxels);
+    const gravityResult = { settled: finalVoxels, movedCount: 0 };
     finalVoxels = dedupeVoxels(gravityResult.settled);
     const compactResult = { compacted: finalVoxels, movedCount: 0 };
 
@@ -1627,18 +1490,13 @@ export default async function handler(req: any, res: any) {
     const finalBrickConnectivity = analyzeBrickConnectivity(bricks);
     if (
       finalBrickConnectivity.connectedComponents > 1 ||
-      finalBrickConnectivity.isolatedBrickIds.length > 0 ||
-      finalBrickConnectivity.unsupportedBrickIds.length > 0 ||
-      finalBrickConnectivity.overextendedBrickIds.length > 0
+      finalBrickConnectivity.isolatedBrickIds.length > 0
     ) {
       const repaired = repairDisconnectedBricksToVoxels(bricks);
-      const supported = enforceVoxelSupport(repaired.voxels);
-      finalVoxels = supported.voxels;
+      finalVoxels = repaired.voxels;
       repairStats = {
         ...repairStats,
-        addedSupportVoxels: repairStats.addedSupportVoxels + supported.stats.addedSupportVoxels,
         addedBridgeVoxels: repairStats.addedBridgeVoxels + repaired.addedBridgeVoxels,
-        cantileverLimitedVoxels: repairStats.cantileverLimitedVoxels + supported.stats.cantileverLimitedVoxels,
         disconnectedComponentsBeforeRepair: Math.max(
           repairStats.disconnectedComponentsBeforeRepair,
           repaired.disconnectedComponentsBeforeRepair

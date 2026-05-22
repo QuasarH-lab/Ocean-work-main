@@ -3,13 +3,11 @@ import {
   analyzeBrickConnectivity,
   createInterlockedFoundationBricks,
   createStudBridgeScaffoldBricks,
-  createSupportColumnScaffoldBricks,
-  enforceVoxelSupport,
   repairDisconnectedBricksToVoxels,
   scoreBrickSeamInterlock,
   scoreSeamInterlock,
   type ConstraintBrick,
-} from './5_physicalConstraints';
+} from './physicalConstraints';
 
 function cellKey(x: number, y: number, z: number): string {
   return `${x},${y},${z}`;
@@ -324,9 +322,7 @@ export function enhanceVoxelResolution(voxels: VoxelData[], minimumVoxels = 1300
 function buildBricksFromVoxels(voxels: VoxelData[], preferMediumParts = false) {
   const occupied = new Set<string>();
   const colorMap = new Map<string, number>();
-  const supported = enforceVoxelSupport(voxels);
-
-  supported.voxels.forEach((voxel) => {
+  voxels.forEach((voxel) => {
     const x = Math.round(voxel.x);
     const y = Math.round(voxel.y);
     const z = Math.round(voxel.z);
@@ -335,98 +331,7 @@ function buildBricksFromVoxels(voxels: VoxelData[], preferMediumParts = false) {
     colorMap.set(key, voxel.color);
   });
 
-  return stabilizeBrickSupports(buildBricksFromColorMap(occupied, colorMap, preferMediumParts), preferMediumParts);
-}
-
-function brickOwnKeys(brick: BrickData) {
-  return new Set(brick.cells.map((cell) => cellKey(cell.x, cell.y, cell.z)));
-}
-
-function hasBrickSupport(brick: BrickData, occupied: Set<string>, ownKeys = brickOwnKeys(brick)) {
-  if (brick.y <= 0 || brick.cells.some((cell) => cell.y <= 0)) {
-    return true;
-  }
-
-  return brick.cells.some((cell) => {
-    const belowKey = cellKey(cell.x, cell.y - 1, cell.z);
-    return occupied.has(belowKey) && !ownKeys.has(belowKey);
-  });
-}
-
-function moveBrickDown(
-  brick: BrickData,
-  occupied: Set<string>,
-  colorMap: Map<string, number>
-) {
-  const ownKeys = brickOwnKeys(brick);
-
-  for (let drop = 1; drop <= brick.y; drop++) {
-    const targetCells = brick.cells.map((cell) => ({
-      x: cell.x,
-      y: cell.y - drop,
-      z: cell.z,
-    }));
-    const targetKeys = new Set(targetCells.map((cell) => cellKey(cell.x, cell.y, cell.z)));
-    const collides = targetCells.some((cell) => {
-      const key = cellKey(cell.x, cell.y, cell.z);
-      return occupied.has(key) && !ownKeys.has(key);
-    });
-
-    if (collides) {
-      continue;
-    }
-
-    const supported = targetCells.some((cell) => {
-      if (cell.y <= 0) {
-        return true;
-      }
-      const belowKey = cellKey(cell.x, cell.y - 1, cell.z);
-      return occupied.has(belowKey) && !ownKeys.has(belowKey) && !targetKeys.has(belowKey);
-    });
-
-    if (!supported) {
-      continue;
-    }
-
-    ownKeys.forEach((key) => {
-      occupied.delete(key);
-      colorMap.delete(key);
-    });
-    targetCells.forEach((cell) => {
-      const key = cellKey(cell.x, cell.y, cell.z);
-      occupied.add(key);
-      colorMap.set(key, brick.color);
-    });
-    return true;
-  }
-
-  return false;
-}
-
-function addSupportColumns(
-  brick: BrickData,
-  occupied: Set<string>,
-  colorMap: Map<string, number>
-) {
-  let added = false;
-
-  brick.cells.forEach((cell) => {
-    if (cell.y <= 0 || occupied.has(cellKey(cell.x, cell.y - 1, cell.z))) {
-      return;
-    }
-
-    for (let y = cell.y - 1; y >= 0; y--) {
-      const key = cellKey(cell.x, y, cell.z);
-      if (occupied.has(key)) {
-        break;
-      }
-      occupied.add(key);
-      colorMap.set(key, brick.color);
-      added = true;
-    }
-  });
-
-  return added;
+  return buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
 }
 
 function buildBricksFromColorMap(
@@ -542,31 +447,7 @@ function buildBricksFromColorMap(
 }
 
 export function stabilizeBrickSupports(bricks: BrickData[], preferMediumParts = false): BrickData[] {
-  let { occupied, colorMap } = buildMapsFromBricks(bricks);
-  let stableBricks = buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
-
-  for (let pass = 0; pass < 8; pass++) {
-    let changed = false;
-    stableBricks = [...stableBricks].sort((a, b) => (a.y - b.y) || (a.x - b.x) || (a.z - b.z));
-
-    for (const brick of stableBricks) {
-      const ownKeys = brickOwnKeys(brick);
-      if (hasBrickSupport(brick, occupied, ownKeys)) {
-        continue;
-      }
-
-      changed = addSupportColumns(brick, occupied, colorMap) || moveBrickDown(brick, occupied, colorMap) || changed;
-    }
-
-    stableBricks = buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
-    ({ occupied, colorMap } = buildMapsFromBricks(stableBricks));
-
-    const unsupported = stableBricks.some((brick) => !hasBrickSupport(brick, occupied));
-    if (!changed || !unsupported) {
-      break;
-    }
-  }
-
+  const { occupied, colorMap } = buildMapsFromBricks(bricks);
   return buildBricksFromColorMap(occupied, colorMap, preferMediumParts);
 }
 
@@ -686,39 +567,57 @@ function enforceConnectedBricks(bricks: BrickData[], preferMediumParts = false):
 
   for (let pass = 0; pass < 12; pass++) {
     const report = analyzeBrickConnectivity(current);
-    if (
-      report.connectedComponents <= 1 &&
-      report.isolatedBrickIds.length === 0 &&
-      report.unsupportedBrickIds.length === 0 &&
-      report.overextendedBrickIds.length === 0
-    ) {
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
       return current;
     }
 
     const repaired = repairDisconnectedBricksToVoxels(current);
-    const supported = enforceVoxelSupport(repaired.voxels);
-    current = mergeCommonBricksTowardTarget(buildBricksFromVoxels(supported.voxels, preferMediumParts));
+    current = mergeCommonBricksTowardTarget(buildBricksFromVoxels(repaired.voxels, preferMediumParts));
   }
 
-  const scaffold = createStudBridgeScaffoldBricks(current).map(constraintBrickToBrickData);
-  if (!scaffold.length) {
-    return current;
-  }
-  const withScaffold = [...current, ...scaffold];
-  const report = analyzeBrickConnectivity(withScaffold);
-  if (
-    report.connectedComponents <= 1 &&
-    report.isolatedBrickIds.length === 0 &&
-    report.unsupportedBrickIds.length === 0 &&
-    report.overextendedBrickIds.length === 0
-  ) {
-    return withScaffold;
+  const withFoundation = [
+    ...current,
+    ...createInterlockedFoundationBricks(current).map(constraintBrickToBrickData),
+  ];
+  const foundationReport = analyzeBrickConnectivity(withFoundation);
+  if (foundationReport.connectedComponents <= 1 && foundationReport.isolatedBrickIds.length === 0) {
+    return withFoundation;
   }
 
-  const foundation = createInterlockedFoundationBricks(withScaffold).map(constraintBrickToBrickData);
-  const withFoundation = [...withScaffold, ...foundation];
-  const supportColumns = createSupportColumnScaffoldBricks(withFoundation).map(constraintBrickToBrickData);
-  return [...withFoundation, ...supportColumns];
+  let bridged = [...withFoundation];
+  for (let pass = 0; pass < 6; pass++) {
+    const report = analyzeBrickConnectivity(bridged);
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
+      break;
+    }
+
+    const additions = createStudBridgeScaffoldBricks(bridged).map(constraintBrickToBrickData);
+    if (!additions.length) {
+      break;
+    }
+    bridged = [...bridged, ...additions];
+  }
+
+  const finalReport = analyzeBrickConnectivity(bridged);
+  if (finalReport.connectedComponents <= 1 && finalReport.isolatedBrickIds.length === 0) {
+    return bridged;
+  }
+
+  const repaired = repairDisconnectedBricksToVoxels(bridged);
+  let rebuilt = mergeCommonBricksTowardTarget(buildBricksFromVoxels(repaired.voxels, preferMediumParts));
+  for (let pass = 0; pass < 8; pass++) {
+    const report = analyzeBrickConnectivity(rebuilt);
+    if (report.connectedComponents <= 1 && report.isolatedBrickIds.length === 0) {
+      break;
+    }
+    const additions = createStudBridgeScaffoldBricks(rebuilt).map(constraintBrickToBrickData);
+    if (!additions.length) {
+      break;
+    }
+    rebuilt = [...rebuilt, ...additions];
+  }
+
+  return rebuilt;
 }
 
 function chooseBestBrickCandidate(candidates: BrickData[][]) {
@@ -727,11 +626,6 @@ function chooseBestBrickCandidate(candidates: BrickData[][]) {
     const bReport = analyzeBrickConnectivity(b);
     const aDisconnected = Math.max(0, aReport.connectedComponents - 1) + aReport.isolatedBrickIds.length;
     const bDisconnected = Math.max(0, bReport.connectedComponents - 1) + bReport.isolatedBrickIds.length;
-    const aInvalid = aDisconnected + aReport.unsupportedBrickIds.length + aReport.overextendedBrickIds.length;
-    const bInvalid = bDisconnected + bReport.unsupportedBrickIds.length + bReport.overextendedBrickIds.length;
-    if (aInvalid !== bInvalid) {
-      return aInvalid - bInvalid;
-    }
     if (aDisconnected !== bDisconnected) {
       return aDisconnected - bDisconnected;
     }
@@ -746,8 +640,7 @@ function chooseBestBrickCandidate(candidates: BrickData[][]) {
 }
 
 export function voxelsToBricks(voxels: VoxelData[]): BrickData[] {
-  const supportedSource = enforceVoxelSupport(voxels).voxels;
-  const originalBricks = buildBricksFromVoxels(supportedSource);
+  const originalBricks = buildBricksFromVoxels(voxels);
   if (isTargetBrickCount(originalBricks)) {
     return enforceConnectedBricks(originalBricks);
   }
@@ -756,7 +649,7 @@ export function voxelsToBricks(voxels: VoxelData[]): BrickData[] {
   const voxelTargets = [1300, 1800, 2400, 3200, 4200];
 
   for (const voxelTarget of voxelTargets) {
-    const enhancedVoxels = enforceVoxelSupport(enhanceVoxelResolution(supportedSource, voxelTarget)).voxels;
+    const enhancedVoxels = enhanceVoxelResolution(voxels, voxelTarget);
     const enhancedBricks = buildBricksFromVoxels(enhancedVoxels);
     const mediumBricks = buildBricksFromVoxels(enhancedVoxels, true);
     const fusedBricks = mergeCommonBricksTowardTarget(mediumBricks);

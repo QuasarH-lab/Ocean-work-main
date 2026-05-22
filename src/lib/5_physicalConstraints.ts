@@ -376,6 +376,33 @@ function addRailBricks(
   }
 }
 
+function addVerticalConnectorBricks(
+  additions: ConstraintBrick[],
+  from: ConstraintVoxel,
+  topY: number,
+  color: number,
+  idPrefix: string,
+  occupied: Set<string>
+) {
+  for (let y = from.y + 1; y <= topY; y++) {
+    const key = cellKey(from.x, y, from.z);
+    if (occupied.has(key)) {
+      continue;
+    }
+    occupied.add(key);
+    additions.push({
+      id: `${idPrefix}-riser-${from.x}-${y}-${from.z}`,
+      x: from.x,
+      y,
+      z: from.z,
+      width: 1,
+      depth: 1,
+      color,
+      cells: [{ x: from.x, y, z: from.z }],
+    });
+  }
+}
+
 export function createStudBridgeScaffoldBricks(bricks: ConstraintBrick[]): ConstraintBrick[] {
   const report = analyzeBrickConnectivity(bricks);
   if (report.connectedComponents <= 1) {
@@ -391,7 +418,6 @@ export function createStudBridgeScaffoldBricks(bricks: ConstraintBrick[]): Const
   const components = report.componentBrickIds
     .map((ids) => ids.flatMap(voxelsById))
     .sort((a, b) => b.length - a.length);
-  const globalTopY = Math.max(0, ...bricks.flatMap((brick) => brick.cells.map((cell) => Math.round(cell.y)))) + 1;
   const main = [...components[0]];
   const additions: ConstraintBrick[] = [];
 
@@ -400,32 +426,15 @@ export function createStudBridgeScaffoldBricks(bricks: ConstraintBrick[]): Const
     const path = pathBetweenXZ(pair.a, pair.b);
     const color = pair.a.color;
     const idPrefix = `stud-bridge-${componentIndex}`;
-
-    path.forEach((cell, pathIndex) => {
-      for (let y = 0; y < globalTopY; y++) {
-        const key = cellKey(cell.x, y, cell.z);
-        if (occupied.has(key)) {
-          continue;
-        }
-        occupied.add(key);
-        additions.push({
-          id: `${idPrefix}-column-${pathIndex}-${y}`,
-          x: cell.x,
-          y,
-          z: cell.z,
-          width: 1,
-          depth: 1,
-          color,
-          cells: [{ x: cell.x, y, z: cell.z }],
-        });
-      }
-    });
-
-    addRailBricks(additions, path, globalTopY, color, idPrefix, 0, occupied);
+    const bridgeY = Math.max(pair.a.y, pair.b.y) + 1;
+    const tieY = bridgeY + 1;
+    addVerticalConnectorBricks(additions, pair.a, bridgeY - 1, color, `${idPrefix}-a`, occupied);
+    addVerticalConnectorBricks(additions, pair.b, bridgeY - 1, color, `${idPrefix}-b`, occupied);
+    addRailBricks(additions, path, bridgeY, color, idPrefix, 0, occupied);
     addRailBricks(
       additions,
       path,
-      globalTopY + 1,
+      tieY,
       color,
       `${idPrefix}-tie`,
       Math.min(2, Math.max(0, path.length - 1)),
@@ -451,37 +460,161 @@ function nextAllowedFoundationSpan(remaining: number) {
   return [8, 6, 4, 3, 2, 1].find((span) => span <= remaining) || 1;
 }
 
+function bottomFootprintKeys(bricks: ConstraintBrick[], groundY: number) {
+  return new Set(
+    bricks.flatMap((brick) =>
+      brick.cells
+        .filter((cell) => Math.round(cell.y) === groundY)
+        .map((cell) => `${Math.round(cell.x)},${Math.round(cell.z)}`)
+    )
+  );
+}
+
+function parseFootprintKey(key: string) {
+  const [x, z] = key.split(',').map(Number);
+  return { x, z };
+}
+
+function footprintNeighborKeys(x: number, z: number) {
+  return [`${x + 1},${z}`, `${x - 1},${z}`, `${x},${z + 1}`, `${x},${z - 1}`];
+}
+
+function connectedFootprintComponents(keys: Set<string>) {
+  const visited = new Set<string>();
+  const components: string[][] = [];
+
+  for (const key of keys) {
+    if (visited.has(key)) {
+      continue;
+    }
+    const queue = [key];
+    const component: string[] = [];
+    visited.add(key);
+
+    while (queue.length) {
+      const current = queue.shift()!;
+      component.push(current);
+      const { x, z } = parseFootprintKey(current);
+      footprintNeighborKeys(x, z).forEach((neighbor) => {
+        if (!keys.has(neighbor) || visited.has(neighbor)) {
+          return;
+        }
+        visited.add(neighbor);
+        queue.push(neighbor);
+      });
+    }
+
+    components.push(component);
+  }
+
+  return components;
+}
+
+function closestFootprintPair(a: string[], b: string[]) {
+  let bestA = parseFootprintKey(a[0]);
+  let bestB = parseFootprintKey(b[0]);
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  a.forEach((left) => {
+    const leftCell = parseFootprintKey(left);
+    b.forEach((right) => {
+      const rightCell = parseFootprintKey(right);
+      const distance = Math.abs(leftCell.x - rightCell.x) + Math.abs(leftCell.z - rightCell.z);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestA = leftCell;
+        bestB = rightCell;
+      }
+    });
+  });
+
+  return { a: bestA, b: bestB };
+}
+
+function addFootprintPath(keys: Set<string>, from: { x: number; z: number }, to: { x: number; z: number }) {
+  let x = from.x;
+  let z = from.z;
+  keys.add(`${x},${z}`);
+  while (x !== to.x) {
+    x += x < to.x ? 1 : -1;
+    keys.add(`${x},${z}`);
+  }
+  while (z !== to.z) {
+    z += z < to.z ? 1 : -1;
+    keys.add(`${x},${z}`);
+  }
+}
+
+function addFoundationRunsForAxis(
+  foundation: ConstraintBrick[],
+  keys: Set<string>,
+  y: number,
+  axis: 'x' | 'z',
+  color: number,
+  idPrefix: string
+) {
+  const grouped = new Map<number, number[]>();
+  [...keys].forEach((key) => {
+    const { x, z } = parseFootprintKey(key);
+    const major = axis === 'x' ? z : x;
+    const minor = axis === 'x' ? x : z;
+    const list = grouped.get(major) || [];
+    list.push(minor);
+    grouped.set(major, list);
+  });
+
+  [...grouped.entries()].forEach(([major, minors]) => {
+    const sorted = [...new Set(minors)].sort((a, b) => a - b);
+    let runStart = sorted[0];
+    let previous = sorted[0];
+
+    const flushRun = (end: number) => {
+      let start = runStart;
+      while (start <= end) {
+        const span = nextAllowedFoundationSpan(end - start + 1);
+        const cells = axis === 'x'
+          ? rectangleCells(start, y, major, span, 1)
+          : rectangleCells(major, y, start, 1, span);
+        foundation.push(lineBrickFromPathCells(`${idPrefix}-${axis}-${major}-${start}`, cells, color));
+        start += span;
+      }
+    };
+
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] !== previous + 1) {
+        flushRun(previous);
+        runStart = sorted[i];
+      }
+      previous = sorted[i];
+    }
+    flushRun(previous);
+  });
+}
+
 export function createInterlockedFoundationBricks(bricks: ConstraintBrick[]): ConstraintBrick[] {
   if (!bricks.length) {
     return [];
   }
-  const xs = bricks.flatMap((brick) => brick.cells.map((cell) => Math.round(cell.x)));
   const ys = bricks.flatMap((brick) => brick.cells.map((cell) => Math.round(cell.y)));
-  const zs = bricks.flatMap((brick) => brick.cells.map((cell) => Math.round(cell.z)));
-  const minX = Math.min(...xs) - 1;
-  const maxX = Math.max(...xs) + 1;
-  const topY = Math.min(...ys) - 1;
-  const bottomY = topY - 1;
-  const minZ = Math.min(...zs) - 1;
-  const maxZ = Math.max(...zs) + 1;
+  const groundY = Math.min(...ys);
+  const topY = groundY + 1;
+  const bottomY = groundY + 2;
   const color = 0x444444;
-  const path: Array<{ x: number; z: number }> = [];
+  const foundationKeys = bottomFootprintKeys(bricks, groundY);
+  if (!foundationKeys.size) {
+    return [];
+  }
 
-  for (let z = minZ; z <= maxZ; z++) {
-    if ((z - minZ) % 2 === 0) {
-      for (let x = minX; x <= maxX; x++) {
-        path.push({ x, z });
-      }
-    } else {
-      for (let x = maxX; x >= minX; x--) {
-        path.push({ x, z });
-      }
-    }
+  let components = connectedFootprintComponents(foundationKeys).sort((a, b) => b.length - a.length);
+  while (components.length > 1) {
+    const pair = closestFootprintPair(components[0], components[1]);
+    addFootprintPath(foundationKeys, pair.a, pair.b);
+    components = connectedFootprintComponents(foundationKeys).sort((a, b) => b.length - a.length);
   }
 
   const foundation: ConstraintBrick[] = [];
-  addRailBricks(foundation, path, topY, color, 'foundation-upper', 0);
-  addRailBricks(foundation, path, bottomY, color, 'foundation-lower', Math.min(2, Math.max(0, path.length - 1)));
+  addFoundationRunsForAxis(foundation, foundationKeys, topY, 'x', color, 'foundation-upper');
+  addFoundationRunsForAxis(foundation, foundationKeys, bottomY, 'z', color, 'foundation-lower');
   return foundation;
 }
 
@@ -536,13 +669,10 @@ function addStudLockedBridge(
   map: Map<string, ConstraintVoxel>,
   from: ConstraintVoxel,
   to: ConstraintVoxel,
-  color: number
+  color: number,
+  bridgeY: number
 ) {
   let added = 0;
-  let x = from.x;
-  let z = from.z;
-  const y = Math.max(from.y, to.y) + 1;
-
   const addVoxel = (vx: number, vy: number, vz: number) => {
     const key = cellKey(vx, vy, vz);
     if (!map.has(key)) {
@@ -551,23 +681,152 @@ function addStudLockedBridge(
     }
   };
 
-  const addBridgeCell = (vx: number, vz: number) => {
-    for (let sy = 0; sy < y; sy++) {
-      addVoxel(vx, sy, vz);
+  const addVerticalRun = (x: number, z: number, startY: number, endY: number) => {
+    const minY = Math.min(startY, endY);
+    const maxY = Math.max(startY, endY);
+    for (let y = minY; y <= maxY; y++) {
+      addVoxel(x, y, z);
     }
-    addVoxel(vx, y, vz);
   };
 
-  addBridgeCell(x, z);
+  const path = pathBetweenXZ(from, to);
+  const tieY = bridgeY + 1;
 
-  while (x !== to.x) {
-    x += x < to.x ? 1 : -1;
-    addBridgeCell(x, z);
+  addVerticalRun(from.x, from.z, from.y, bridgeY);
+  addVerticalRun(to.x, to.z, to.y, bridgeY);
+
+  path.forEach((cell, index) => {
+    addVoxel(cell.x, bridgeY, cell.z);
+    if (index > 0 && index < path.length - 1) {
+      addVoxel(cell.x, tieY, cell.z);
+    }
+  });
+
+  return added;
+}
+
+function voxelNeighborCount(cell: ConstraintVoxel, map: Map<string, ConstraintVoxel>) {
+  let count = 0;
+  const neighbors = [
+    cellKey(cell.x + 1, cell.y, cell.z),
+    cellKey(cell.x - 1, cell.y, cell.z),
+    cellKey(cell.x, cell.y + 1, cell.z),
+    cellKey(cell.x, cell.y - 1, cell.z),
+    cellKey(cell.x, cell.y, cell.z + 1),
+    cellKey(cell.x, cell.y, cell.z - 1),
+  ];
+  neighbors.forEach((key) => {
+    if (map.has(key)) {
+      count++;
+    }
+  });
+  return count;
+}
+
+function chooseCoreBridgeY(voxels: ConstraintVoxel[]) {
+  const counts = new Map<number, number>();
+  voxels.forEach((voxel) => {
+    counts.set(voxel.y, (counts.get(voxel.y) || 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]))[0]?.[0] ?? 0;
+}
+
+function chooseBridgePair(
+  main: ConstraintVoxel[],
+  component: ConstraintVoxel[],
+  map: Map<string, ConstraintVoxel>,
+  coreY: number
+) {
+  const scoreCandidates = (voxels: ConstraintVoxel[]) =>
+    [...voxels]
+      .sort((a, b) => {
+        const aScore = voxelNeighborCount(a, map) * 10 - Math.abs(a.y - coreY);
+        const bScore = voxelNeighborCount(b, map) * 10 - Math.abs(b.y - coreY);
+        if (aScore !== bScore) {
+          return bScore - aScore;
+        }
+        return Math.abs(a.y - coreY) - Math.abs(b.y - coreY);
+      })
+      .slice(0, 16);
+
+  const mainCandidates = scoreCandidates(main);
+  const componentCandidates = scoreCandidates(component);
+  let best = { a: mainCandidates[0], b: componentCandidates[0], score: Number.POSITIVE_INFINITY };
+
+  mainCandidates.forEach((a) => {
+    componentCandidates.forEach((b) => {
+      const distance = Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
+      const yPenalty = Math.abs(a.y - coreY) + Math.abs(b.y - coreY);
+      const surfacePenalty = (6 - voxelNeighborCount(a, map)) + (6 - voxelNeighborCount(b, map));
+      const score = distance * 10 + yPenalty * 2 + surfacePenalty;
+      if (score < best.score) {
+        best = { a, b, score };
+      }
+    });
+  });
+
+  return { a: best.a, b: best.b };
+}
+
+function addCoreLayerGapFill(map: Map<string, ConstraintVoxel>, y: number) {
+  let added = 0;
+  const layer = [...map.values()].filter((voxel) => voxel.y === y);
+  if (!layer.length) {
+    return added;
   }
-  while (z !== to.z) {
-    z += z < to.z ? 1 : -1;
-    addBridgeCell(x, z);
-  }
+
+  const addIfMissing = (x: number, z: number, color: number) => {
+    const key = cellKey(x, y, z);
+    if (!map.has(key)) {
+      map.set(key, { x, y, z, color });
+      added++;
+    }
+  };
+
+  const byZ = new Map<number, ConstraintVoxel[]>();
+  const byX = new Map<number, ConstraintVoxel[]>();
+  layer.forEach((voxel) => {
+    if (!byZ.has(voxel.z)) {
+      byZ.set(voxel.z, []);
+    }
+    if (!byX.has(voxel.x)) {
+      byX.set(voxel.x, []);
+    }
+    byZ.get(voxel.z)!.push(voxel);
+    byX.get(voxel.x)!.push(voxel);
+  });
+
+  byZ.forEach((voxels) => {
+    voxels.sort((a, b) => a.x - b.x);
+    if (voxels.length < 3) {
+      return;
+    }
+    const left = voxels[0];
+    const right = voxels[voxels.length - 1];
+    if (voxelNeighborCount(left, map) < 2 || voxelNeighborCount(right, map) < 2) {
+      return;
+    }
+    for (let x = left.x + 1; x < right.x; x++) {
+      addIfMissing(x, left.z, left.color);
+    }
+  });
+
+  byX.forEach((voxels) => {
+    voxels.sort((a, b) => a.z - b.z);
+    if (voxels.length < 3) {
+      return;
+    }
+    const front = voxels[0];
+    const back = voxels[voxels.length - 1];
+    if (voxelNeighborCount(front, map) < 2 || voxelNeighborCount(back, map) < 2) {
+      return;
+    }
+    for (let z = front.z + 1; z < back.z; z++) {
+      addIfMissing(front.x, z, front.color);
+    }
+  });
 
   return added;
 }
@@ -611,18 +870,7 @@ function addBrickSupportColumns(
 export function repairDisconnectedBricksToVoxels(bricks: ConstraintBrick[]): BrickConnectivityRepair {
   const report = analyzeBrickConnectivity(bricks);
   const map = normalizeVoxels(bricks.flatMap(brickToVoxels));
-  const byId = new Map(bricks.map((brick) => [brick.id, brick]));
-  const allCells = new Set([...map.keys()]);
-  const invalidSupportIds = new Set([...report.unsupportedBrickIds, ...report.overextendedBrickIds]);
   let addedBridgeVoxels = 0;
-
-  invalidSupportIds.forEach((id) => {
-    const brick = byId.get(id);
-    if (!brick) {
-      return;
-    }
-    addedBridgeVoxels += addBrickSupportColumns(map, brick, allCells, DEFAULT_MAX_CANTILEVER_DISTANCE);
-  });
 
   if (report.connectedComponents <= 1) {
     return {
@@ -632,14 +880,18 @@ export function repairDisconnectedBricksToVoxels(bricks: ConstraintBrick[]): Bri
     };
   }
 
+  const byId = new Map(bricks.map((brick) => [brick.id, brick]));
   const components = report.componentBrickIds
     .map((ids) => ids.flatMap((id) => brickToVoxels(byId.get(id)!)))
     .sort((a, b) => b.length - a.length);
 
   const main = components[0];
+  const coreY = chooseCoreBridgeY([...map.values()]);
+  addedBridgeVoxels += addCoreLayerGapFill(map, coreY);
   for (let i = 1; i < components.length; i++) {
-    const pair = closestPairByXZ(main, components[i]);
-    addedBridgeVoxels += addStudLockedBridge(map, pair.a, pair.b, pair.a.color);
+    const pair = chooseBridgePair(main, components[i], map, coreY);
+    const bridgeY = [pair.a.y, pair.b.y, coreY].sort((a, b) => a - b)[1];
+    addedBridgeVoxels += addStudLockedBridge(map, pair.a, pair.b, pair.a.color, bridgeY);
     main.push(...components[i]);
   }
 
