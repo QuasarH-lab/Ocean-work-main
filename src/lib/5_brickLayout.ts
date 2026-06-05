@@ -1,3 +1,4 @@
+// 负责人：5号成员
 import { BrickData, BrickType, VoxelData } from '../5_types.js';
 import {
   analyzeBrickConnectivity,

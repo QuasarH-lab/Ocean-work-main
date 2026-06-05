@@ -1,2 +1,0 @@
--- Compatibility wrapper: the numbered canonical schema is db/4_schema.sql.
--- Keep this file so older tooling that checks db/schema.sql still finds a schema placeholder.

@@ -1,3 +1,4 @@
+// 负责人：3号成员
 export const COLORS = {
   DARK: 0x4a3728,
   LIGHT: 0x654321,

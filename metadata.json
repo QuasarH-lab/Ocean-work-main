@@ -1,5 +1,8 @@
 {
-  "name": "Lego Studio Workbench",
-  "description": "A 3D Lego voxel build system powered by AI",
-  "requestFramePermissions": []
+    "name":  "Lego Studio Workbench",
+    "description":  "A 3D Lego voxel build system powered by AI",
+    "requestFramePermissions":  [
+
+                                ],
+    "owner_member":  "6∫≈≥…‘±"
 }

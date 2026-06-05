@@ -1,3 +1,4 @@
+// 负责人：5号成员
 export interface LegoPart {
   id: string;
   name: string;
@@ -89,17 +90,4 @@ export interface SavedModel {
   prompt?: string;
   mode?: 'create' | 'morph' | 'image' | 'import';
   createdAt?: number;
-}
-
-export interface PersistedBuildRecord {
-  id: string;
-  name: string;
-  prompt: string;
-  mode: 'create' | 'morph' | 'image' | 'import';
-  baseModel: string | null;
-  voxelCount: number;
-  data: VoxelData[];
-  bricks?: BrickData[];
-  createdAt: number;
-  updatedAt: number;
 }

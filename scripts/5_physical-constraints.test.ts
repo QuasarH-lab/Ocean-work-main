@@ -1,3 +1,4 @@
+// 负责人：6号成员
 import { voxelsToBricks } from '../src/lib/5_brickLayout.js';
 import {
   analyzeBrickConnectivity,

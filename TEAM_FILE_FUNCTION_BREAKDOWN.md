@@ -1,427 +1,250 @@
-# Ocean-work-main 项目文件命名、六人分工与函数说明
+# Ocean-work-main 文件分工与函数说明（中文版）
 
-本文档根据当前 `Ocean-work-main` 文件夹内容重新整理。项目文件已经重新按 6 人任务分工编号，编号文件是正式实现文件；未编号文件保留为框架兼容入口，避免 Vite、React、Vercel 找不到固定入口或 API 路由。
+本文档基于当前仓库实际文件状态编写，目标是：
+- 对齐当前“带编号实现文件 + 无编号兼容入口文件”的命名方式；
+- 明确六人分工；
+- 对核心模块做到函数级说明；
+- 说明当前版本相较首版的关键改进。
 
-## 1. 文件命名规则
+## 1. 当前项目结构总览
 
-| 编号 | 成员 | 负责模块 |
+当前项目采用“实现文件带成员编号、入口文件保持框架默认命名”的双层结构：
+- 实现文件（例如 `2_Generator.tsx`、`5_generate-voxel.impl.ts`）承载实际业务逻辑；
+- 兼容入口文件（例如 `src/App.tsx`、`api/generate-voxel.ts`）仅做 `export` 转发，保证 Vite/Vercel/React 的默认加载路径不被破坏。
+
+数据库相关代码已移除，`Saved Builds` 目前为前端会话内存态，不做后端持久化。
+
+## 2. 六人分工（按当前仓库）
+
+| 成员 | 负责方向 | 主要文件 |
 |---|---|---|
-| `1_` | 1 号成员 | 前端入口、页面框架、全局样式 |
-| `2_` | 2 号成员 | 生成器页面、用户交互、保存记录面板 |
-| `3_` | 3 号成员 | 3D 渲染、Three.js 引擎、本地模型生成 |
-| `4_` | 4 号成员 | 数据库、保存记录 API、本地 Vite API 桥接 |
-| `5_` | 5 号成员 | AI 生成接口、乐高砖块算法、物理连接校验 |
-| 无编号配置文件 | 6 号成员 | 部署配置、依赖管理、说明文档、集成检查 |
-
-## 2. 保留未编号文件的原因
-
-这些文件不能完全删除或随意改名，因为工具链会按固定路径查找它们。当前做法是：保留原文件名，但文件内容只转发到编号实现文件。
-
-部署注意：所有会在 Vercel/Node ESM 运行时被加载的转发入口和相对模块导入，都在源码中使用 `.js` 后缀。例如 `src/lib/voxelConstants.ts` 写作 `export * from './3_voxelConstants.js'`。TypeScript/Vite 会在开发和构建时把这个 `.js` 路径解析回对应 `.ts` 源文件，部署后 Node 也能找到编译后的 `.js` 文件。
-
-| 兼容入口文件 | 实际实现文件 |
-|---|---|
-| `src/App.tsx` | `src/1_App.tsx`，转发路径使用 `.js` |
-| `src/main.tsx` | `src/1_main.tsx` |
-| `src/index.css` | `src/1_index.css` |
-| `src/components/Layout.tsx` | `src/components/1_Layout.tsx`，转发路径使用 `.js` |
-| `src/pages/Generator.tsx` | `src/pages/2_Generator.tsx`，转发路径使用 `.js` |
-| `src/services/VoxelEngine.ts` | `src/services/3_VoxelEngine.ts`，转发路径使用 `.js` |
-| `src/lib/voxelConstants.ts` | `src/lib/3_voxelConstants.ts`，转发路径使用 `.js` |
-| `src/lib/voxelGenerators.ts` | `src/lib/3_voxelGenerators.ts`，转发路径使用 `.js` |
-| `src/lib/brickLayout.ts` | `src/lib/5_brickLayout.ts`，转发路径使用 `.js` |
-| `src/lib/physicalConstraints.ts` | `src/lib/5_physicalConstraints.ts`，转发路径使用 `.js` |
-| `src/types.ts` | `src/5_types.ts`，转发路径使用 `.js` |
-| `api/builds.ts` | `api/4_builds.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
-| `api/generate-voxel.ts` | `api/5_generate-voxel.impl.ts`，入口中使用 `.js` 后缀以适配 Vercel/Node ESM |
-| `server/database.ts` | `server/4_database.ts` |
-| `db/schema.sql` | `db/4_schema.sql` |
-| `vite.config.ts` | `4_vite.config.impl.ts` |
-| `scripts/physical-constraints.test.ts` | `scripts/5_physical-constraints.test.ts` |
-
-## 3. 六人整体分工
-
-| 成员 | 前后端 | 任务重点 | 文件 |
-|---|---|---|---|
-| 1 号成员 | 前端 | 应用入口、布局、视觉主题 | `src/1_App.tsx`, `src/1_main.tsx`, `src/1_index.css`, `src/components/1_Layout.tsx` |
-| 2 号成员 | 前端 | 生成器页面、文字/图片输入、JSON 导入导出、数据库面板 | `src/pages/2_Generator.tsx` |
-| 3 号成员 | 前端 | 3D LEGO 渲染、积木动画、预设模型 | `src/services/3_VoxelEngine.ts`, `src/lib/3_voxelConstants.ts`, `src/lib/3_voxelGenerators.ts` |
-| 4 号成员 | 后端 | 保存记录 API、SQLite 数据库、本地开发 API 代理 | `api/4_builds.impl.ts`, `server/4_database.ts`, `db/4_schema.sql`, `4_vite.config.impl.ts` |
-| 5 号成员 | 后端/算法 | Gemini 生成接口、多规格积木合并、物理连接可行性校验 | `api/5_generate-voxel.impl.ts`, `src/lib/5_brickLayout.ts`, `src/lib/5_physicalConstraints.ts`, `src/5_types.ts`, `scripts/5_physical-constraints.test.ts` |
-| 6 号成员 | 全栈集成 | 部署、依赖、环境变量、项目文档 | `package.json`, `package-lock.json`, `tsconfig.json`, `vercel.json`, `.env.example`, `.gitignore`, `README.md`, `VERCEL_IMAGE_TEXT_ISSUE_FIX.md`, `metadata.json`, `TEAM_FILE_FUNCTION_BREAKDOWN.md`, `index.html` |
-
-## 4. 1 号成员：前端入口与布局
-
-### `src/1_App.tsx`
-
-- `App()`: React 根组件，将 `Generator` 页面放入统一的 `Layout` 页面框架中。
-
-### `src/1_main.tsx`
-
-- React 挂载逻辑：从 HTML 中的 `#root` 创建 React 根节点，渲染 `App`，并加载 `src/1_index.css`。
-
-### `src/components/1_Layout.tsx`
-
-- `Layout({ children })`: 全局页面布局组件，包含顶部标题栏、系统状态、构建模式显示区域，并把页面主体内容放入 `main` 区域。
-
-### `src/1_index.css`
-
-- 定义 Tailwind 主题变量、颜色、字体、背景、玻璃面板、按钮 hover 动效、滚动条、滑块样式。
-
-### 兼容入口
-
-- `src/App.tsx`: 转发 `src/1_App.tsx`。
-- `src/main.tsx`: 引入 `src/1_main.tsx`。
-- `src/index.css`: 引入 `src/1_index.css`。
-- `src/components/Layout.tsx`: 转发 `src/components/1_Layout.tsx`。
-
-## 5. 2 号成员：生成器页面与用户流程
-
-### `src/pages/2_Generator.tsx`
-
-- `compilePhysicalModel(data, bricks)`: 将 voxel 和 brick 数据统一成页面/渲染器可直接使用的模型结构，当前主要通过 `bricksToVoxels` 保持 voxel 与 brick 一致。
-- `buildPresetModel(name)`: 根据 `Eagle`、`Fox`、`Tiger` 等名称生成本地预设模型，并转换为页面可加载的数据。
-- `formatBuildMode(mode)`: 将 `create`、`morph`、`image`、`import` 转换成界面显示文字。
-- `Generator()`: 核心页面组件，管理提示词、图片上传、生成按钮、预设模型、JSON 导入导出、数据库记录、当前模型、积木清单、左右面板折叠、自动旋转等状态。
-- `selectedRecord`: 从数据库记录中选出当前正在查看的保存记录。
-- `loadSavedBuilds()`: 请求 `/api/builds`，读取数据库记录，刷新 Saved Builds、Rebuilds、History 和数据库路径显示。
-- 页面初始化 `useEffect`: 创建 `VoxelEngine`，加载初始 Fox 模型，绑定窗口 resize 和 ResizeObserver。
-- 数据库加载 `useEffect`: 页面加载后自动调用 `loadSavedBuilds()`。
-- `relevantRebuilds`: 只显示当前基础模型相关的 rebuild 记录。
-- `syncPartsFromBricks(bricks)`: 按砖块类型和颜色统计零件数量，生成 Parts List。
-- `loadModel(name, data, bricks)`: 直接加载模型到 3D 引擎，并更新当前模型、零件清单和历史记录。
-- `rebuildModel(name, data, bricks)`: 调用 3D 引擎的 rebuild 动画，让当前模型变化为目标模型。
-- `persistBuild(build)`: 通过 `/api/builds` 保存生成、图片、导入或 rebuild 的模型。
-- `handlePresetBuild(name)`: 加载本地预设模型。
-- `getLocalPresetFromPrompt(value)`: 从提示词中识别 `fox`、`tiger`、`狐狸`、`老虎` 等关键词。
-- `handleQuickPreset(name)`: 不调用 AI，直接加载本地 Fox/Tiger 快捷模型。
-- `handleToggleRotation()`: 控制 3D 模型是否自动旋转。
-- `handleLoadSavedBuild(build)`: 从保存列表中重新加载模型。
-- `handleDeleteRecord(id)`: 删除数据库保存记录并刷新列表。
-- `handleGenerate(mode)`: 生成主流程。根据模式处理文字或图片输入，调用 `/api/generate-voxel`，处理本地预设 fallback，加载模型并保存生成结果。
-- `openExportModal()`: 打开 JSON 导出弹窗，并读取当前 3D 模型 JSON。
-- `openImportModal()`: 打开 JSON 导入弹窗。
-- `handleJsonImport()`: 解析用户输入的 JSON，转换为 voxel/brick，加载到引擎并保存为 import 记录。
-- `handleCopyJson()`: 复制导出的 JSON。
-- `handleExportParts()`: 将零件清单导出为文本文件。
-
-### 兼容入口
-
-- `src/pages/Generator.tsx`: 转发 `src/pages/2_Generator.tsx`。
-
-## 6. 3 号成员：3D 渲染与本地模型
-
-### `src/services/3_VoxelEngine.ts`
-
-- `constructor(container, onStateChange, onCountChange)`: 初始化 Three.js 场景、相机、渲染器、控制器、灯光、地面、实例化网格和动画循环。
-- `loadInitialModel(data, brickData)`: 加载初始模型，创建积木实例，调整相机，并更新 voxel 数量。
-- `rebuild(targetModel, brickData)`: 计算目标积木布局并启动重建动画。
-- `dismantle()`: 进入拆散状态，为积木加入速度和旋转，让模型散开。
-- `handleResize()`: 根据容器大小更新相机比例和渲染器尺寸。
-- `setAutoRotate(enabled)`: 打开或关闭 OrbitControls 自动旋转。
-- `focusModel(data, brickData)`: 根据当前模型重新聚焦相机。
-- `getJsonData()`: 将当前模型导出为 JSON。
-- `getUniqueColors()`: 返回当前模型使用到的颜色。
-- `cleanup()`: 停止动画循环并释放 Three.js 资源。
-- `createBricks(data, brickData)`: 创建运行时积木对象，并绘制砖块主体、上方凸点、下方连接孔/管结构。
-- `fitCameraToBricks(bricks)`: 根据模型尺寸计算相机位置。
-- `applyCameraFraming()`: 应用相机位置和 OrbitControls 目标点。
-- `draw()`: 每帧更新实例化网格矩阵和颜色；上方被覆盖的凸点会隐藏，避免上下拼接后凸点露出。
-- `getColorDist(c1, hex2)`: 计算颜色距离，用于 rebuild 时匹配旧积木和新积木。
-- `updatePhysics()`: 更新拆散、下落、弹跳、旋转和重建动画。
-- `animate()`: 主渲染循环。
-- `getVoxelData()`: 从当前积木状态反算 voxel 数据。
-- `getTotalCells()`: 统计所有积木占用的格子数量。
-- `disposeInstancedMesh(mesh)`: 安全移除并释放实例化网格。
-
-### `src/lib/3_voxelConstants.ts`
-
-- `VOXEL_SIZE`: 单个 stud 单元的基础尺寸。
-- `FLOOR_Y`: 地面高度。
-- `BACKGROUND_COLOR`: 3D 场景背景色。
-- `COLORS`: 本地模型和渲染共享颜色。
-- `CONFIG`: 积木高度、stud 高度、孔洞尺寸、间距等渲染参数。
-
-### `src/lib/3_voxelGenerators.ts`
-
-- `setBlock(map, x, y, z, color)`: 向坐标 Map 中写入一个 voxel，避免重复。
-- `generateSphere(...)`: 生成球形/圆润体块，用于动物身体、头部、耳朵等。
-- `Generators.Eagle()`: 生成 Eagle 预设模型。
-- `Generators.Cat()`: 生成 Cat 预设模型。
-- `Generators.Rabbit()`: 生成 Rabbit 预设模型。
-- `Generators.Twins()`: 生成双模型预设。
-- `Generators.Fox()`: 生成 Fox 本地模型，用于快捷模型和 AI fallback。
-- `Generators.Tiger()`: 生成 Tiger 本地模型，用于快捷模型和 AI fallback。
-- `buildMiniEagle(offsetX, offsetZ)`: `Twins` 内部小鹰构建函数。
-
-### 兼容入口
-
-- `src/services/VoxelEngine.ts`: 转发 `src/services/3_VoxelEngine.ts`。
-- `src/lib/voxelConstants.ts`: 转发 `src/lib/3_voxelConstants.ts`。
-- `src/lib/voxelGenerators.ts`: 转发 `src/lib/3_voxelGenerators.ts`。
-
-## 7. 4 号成员：数据库与 API 保存模块
-
-### `api/4_builds.impl.ts`
-
-- `getCorsHeaders(req)`: 生成 CORS 响应头，支持不同设备和不同来源访问 API。
-- `jsonResponse(res, req, status, payload)`: 统一返回 JSON，并附带 CORS 头。
-- `parseBody(req)`: 兼容字符串 body、对象 body 和空 body。
-- `isVoxelArray(value)`: 校验保存数据是否为合法 voxel 数组。
-- `handler(req, res)`: `/api/builds` 主处理函数，支持 `OPTIONS`、`GET`、`POST`、`DELETE`，用于读取、保存、删除构建记录。
-
-### `server/4_database.ts`
-
-- `getDatabase()`: 创建 `.data` 目录，打开 SQLite 数据库，执行 `db/4_schema.sql` 初始化表结构。
-- `mapRow(row)`: 将数据库行转换为前端可用的保存记录对象。
-- `listBuilds(limit)`: 查询最近保存的模型记录。
-- `createBuild(input)`: 新增一条模型保存记录。
-- `deleteBuild(id)`: 按 id 删除记录。
-- `databaseFilePath()`: 返回本地数据库文件路径，供数据库面板显示。
-
-### `db/4_schema.sql`
-
-- `builds` 表：保存模型 id、名称、提示词、模式、基础模型、voxel 数量、voxel JSON、创建时间、更新时间。
-- `idx_builds_created_at`: 按创建时间加速查询。
-- `idx_builds_mode`: 按模式加速查询。
-- `idx_builds_base_model`: 按基础模型加速查询。
-
-### `4_vite.config.impl.ts`
-
-- `createNodeStyleResponse(res)`: 将本地 Node response 包装成接近 Vercel API 的响应对象。
-- `readJsonBody(req)`: 读取本地开发请求中的 JSON body。
-- `localApiPlugin()`: 在 Vite 开发环境中把 `/api/builds` 和 `/api/generate-voxel` 转发到 TypeScript API 文件。
-- `runHandler(server, req, res, next)`: 动态加载 API handler 并执行。
-- 默认配置：加载 `.env.local` 和 `.env`，注册 React、Tailwind、本地 API 插件和路径 alias。
-
-### 兼容入口
-
-- `api/builds.ts`: 转发 `api/4_builds.impl.ts`，源码中写作 `./4_builds.impl.js`，避免 Vercel 部署后出现 `ERR_MODULE_NOT_FOUND`。
-- `server/database.ts`: 转发 `server/4_database.ts`。
-- `db/schema.sql`: 保留兼容说明，正式 schema 在 `db/4_schema.sql`。
-- `vite.config.ts`: 转发 `4_vite.config.impl.ts`。
-
-## 8. 5 号成员：AI 生成、积木算法与物理校验
-
-### `api/5_generate-voxel.impl.ts`
-
-- `getCorsHeaders(req)`: 为生成接口设置 CORS。
-- `jsonResponse(res, req, status, payload)`: 返回统一 JSON。
-- `toVoxelColor(color)`: 将十六进制颜色转为数字颜色。
-- `buildSystemPrompt(mode, prompt, paletteHint)`: 根据文字、图片或 rebuild 模式生成 Gemini 系统提示词。
-- `getModelChain()`: 从环境变量读取 Gemini 模型链，支持失败后切换模型。
-- `getLocalPresetFromPrompt(value)`: 识别 Fox/Tiger 相关提示词，决定是否用本地模型 fallback。
-- `isRetryableModelError(error)`: 判断 429、500、503、504、timeout 是否可重试。
-- `cellKey(x, y, z)`: 坐标转字符串 key。
-- `parseCellKey(key)`: 字符串 key 转坐标。
-- `canPlaceBrick(...)`: 判断指定尺寸砖块是否能放在当前 voxel 区域。
-- `markBrickCells(...)`: 标记砖块占用格子。
-- `generateBrickCells(...)`: 生成一个砖块覆盖的所有格子。
-- `isDetailCell(...)`: 判断某格是否为细节格，避免被大砖块吞掉。
-- `isCriticalDetailCell(...)`: 判断是否为关键细节颜色/区域。
-- `canUseBrickPattern(...)`: 判断某种砖块尺寸是否适合当前区域。
-- `getOrientations(pattern, y)`: 获取砖块在当前层允许的方向。
-- `getHorizontalNeighborKeys(...)`: 获取同层四邻接格。
-- `getNeighborKeys(...)`: 获取三维六邻接格。
-- `normalizeDecorativeSingletons(colorMap)`: 修正孤立装饰格，使其更容易连接到主体。
-- `countConnectedSameColor(...)`: 统计同色连通区域大小。
-- `findNearestDifferentColor(...)`: 寻找附近不同颜色，用于细节修补。
-- `voxelToBricks(...)`: 将 voxel 转换为乐高砖块布局。
-- `buildBricksForTargetRange(voxels)`: 生成多个砖块候选方案并选择接近目标数量的方案。
-- `isTargetBrickCount(bricks)`: 判断砖块数量是否在目标范围内。
-- `getCommonBrickType(width, depth)`: 将尺寸映射到常见砖块类型。
-- `getBrickTypeForDimensions(width, depth)`: 为任意尺寸返回砖块类型。
-- `constraintBrickToBrick(brick, index)`: 将物理校验砖块转换为 API 输出砖块。
-- `tryMergeCommonBrickPair(first, second)`: 尝试把相邻小砖合并为常见大砖。
-- `mergeCommonBricksTowardTarget(...)`: 在保持常见尺寸的前提下减少砖块数量。
-- `enforceConnectedBricks(bricks, preferMediumParts)`: 使用桥接、地基、支撑柱等方式增强连接。
-- `buildBricksFromColorMap(...)`: 从占用图和颜色图生成砖块。
-- `buildMapsFromBricks(bricks)`: 从砖块反建占用图和颜色图。
-- `mixColor(a, b, ratio)`: 混合颜色，用于补充支撑/细节格。
-- `addEnhancedVoxel(...)`: 添加增强 voxel。
-- `buildVoxelSource(voxels)`: 构建 voxel 查找表。
-- `ensureSculpturalVolume(voxels)`: 增加模型厚度，避免生成过薄平面。
-- `enhanceVoxelResolution(voxels, minimumVoxels)`: 提升 voxel 密度和细节。
-- `stabilizeBrickSupports(bricks, preferMediumParts)`: 让砖块下落或补支撑，减少悬空。
-- `bricksToVoxels(bricks)`: 砖块转 voxel。
-- `validateBrickConnectivity(bricks)`: 校验支撑、孤立砖块、连通分量和物理可行性。
-- `dedupeVoxels(voxels)`: 去除重复 voxel。
-- `validateManufacturability(voxels, bricks, validation)`: 输出可制造性报告，包括网格对齐、重叠、支撑、连通、缝隙/拼接可行性。
-- `sideNeighborCount(...)`: 统计某 voxel 的同层邻接数量。
-- `compactVoxelsForTightContact(voxels)`: 将弱连接 voxel 向主体压紧，减少明显缝隙。
-- `findConnectedComponentsFromVoxels(voxels)`: 查找 voxel 连通分量。
-- `closestPairByXZ(a, b)`: 查找两个分量之间最近的 x/z 连接点。
-- `repairVoxelConnectivity(voxels, bricks, validation)`: 补桥、补支撑，让模型更接近真实可拼接结构。
-- `handler(req, res)`: `/api/generate-voxel` 主处理函数。负责参数校验、调用 Gemini、超时/重试、本地预设 fallback、voxel 清理、砖块合并、物理校验和返回结果。
-
-### `src/lib/5_brickLayout.ts`
-
-- `cellKey(x, y, z)`: 坐标 key 工具。
-- `parseCellKey(key)`: key 解析工具。
-- `canPlaceBrick(...)`: 判断砖块是否可放置。
-- `createCells(...)`: 创建砖块占用格。
-- `markCells(...)`: 标记已使用格。
-- `getHorizontalNeighbors(...)`: 获取同层邻居。
-- `isDetailCell(...)`: 识别细节格。
-- `isCriticalDetailCell(...)`: 识别关键细节格。
-- `canUseBrickPattern(...)`: 控制可用砖块规格。
-- `getOrientations(...)`: 生成砖块旋转方向。
-- `buildMapsFromBricks(bricks)`: 从砖块生成占用图和颜色图。
-- `mixColor(a, b, ratio)`: 颜色混合。
-- `addEnhancedVoxel(...)`: 添加增强 voxel。
-- `buildVoxelSource(voxels)`: 构建 voxel 来源表。
-- `ensureSculpturalVolume(voxels)`: 增加体积感。
-- `enhanceVoxelResolution(voxels, minimumVoxels)`: 增加模型细节和 voxel 数量。
-- `buildBricksFromVoxels(voxels, preferMediumParts)`: 第一轮 voxel 到砖块转换。
-- `buildBricksFromColorMap(...)`: 从颜色/占用图放置多规格砖块。
-- `stabilizeBrickSupports(bricks, preferMediumParts)`: 前端侧支撑稳定化。
-- `getCommonBrickType(width, depth)`: 常见砖块类型映射。
-- `getBrickTypeForDimensions(width, depth)`: 尺寸到砖块类型映射。
-- `constraintBrickToBrickData(brick, index)`: 物理校验砖块转前端砖块。
-- `tryMergeCommonBrickPair(first, second)`: 合并相邻砖块。
-- `mergeCommonBricksTowardTarget(...)`: 将砖块数量调整到更合理范围。
-- `isTargetBrickCount(bricks)`: 判断砖块数量目标。
-- `chooseClosestBrickCount(candidates)`: 选择最接近目标数量的候选方案。
-- `enforceConnectedBricks(bricks, preferMediumParts)`: 使用桥接、地基和支撑柱增强真实连接。
-- `chooseBestBrickCandidate(candidates)`: 根据数量和缝隙/错缝评分选择最佳砖块方案。
-- `voxelsToBricks(voxels)`: 前端公开转换函数。
-- `normalizeBricks(value, fallbackVoxels)`: 校验外部 brick 数据，不合法时用 voxel 重新生成。
-- `bricksToVoxels(bricks)`: brick 转 voxel。
-
-### `src/lib/5_physicalConstraints.ts`
-
-- `cellKey(x, y, z)`: 物理校验坐标 key。
-- `parseCellKey(key)`: 解析坐标 key。
-- `normalizeVoxels(voxels)`: 去重并排序 voxel。
-- `sameLayerNeighborKeys(x, y, z)`: 获取同层邻接。
-- `hasVerticalSupport(...)`: 判断格子是否有下方支撑。
-- `hasSupportedNeighborWithinDistance(...)`: 判断短悬臂是否在允许距离内。
-- `enforceVoxelSupport(voxels, options)`: 为悬空 voxel 补支撑。
-- `shareAnyCellXZ(a, b, dy)`: 判断上下层砖块是否在 x/z 上重叠。
-- `hasStudSupport(brick, allCells, groundY)`: 判断砖块是否有有效 stud 支撑。
-- `isBrickOverextended(...)`: 判断砖块悬臂是否过长。
-- `analyzeBrickConnectivity(bricks, options)`: 输出砖块连通性、孤立砖块、无支撑砖块和物理可行性报告。
-- `brickToVoxels(brick)`: brick 转 voxel。
-- `closestPairByXZ(a, b)`: 查找两个组件最近点。
-- `allBrickVoxelsById(bricks)`: 按 brick id 整理 voxel。
-- `pathBetweenXZ(from, to)`: 生成 x/z 平面曼哈顿路径。
-- `lineBrickFromPathCells(...)`: 把路径格转换为线性砖块。
-- `addRailBricks(...)`: 沿路径添加桥接/地基砖。
-- `addVerticalConnectorBricks(...)`: 添加竖向连接砖。
-- `createStudBridgeScaffoldBricks(bricks)`: 为断开的组件添加 stud 桥接结构。
-- `rectangleCells(...)`: 生成矩形砖块格子。
-- `nextAllowedFoundationSpan(remaining)`: 选择合适地基跨度。
-- `bottomFootprintKeys(...)`: 获取底层占地格。
-- `connectedFootprintComponents(keys)`: 分析底部占地连通性。
-- `addFoundationRunsForAxis(...)`: 按 x/z 方向生成交错地基层。
-- `createInterlockedFoundationBricks(bricks)`: 创建交错地基，提高整体真实连接性。
-- `createSupportColumnScaffoldBricks(bricks)`: 为无支撑砖块补支撑柱。
-- `addStudLockedBridge(...)`: 在 voxel 层添加可锁定桥接。
-- `voxelNeighborCount(...)`: 统计 voxel 邻居数量。
-- `chooseCoreBridgeY(voxels)`: 选择桥接核心高度。
-- `chooseBridgePair(...)`: 选择两个组件之间最合适的连接点。
-- `addCoreLayerGapFill(...)`: 补齐核心层空隙。
-- `addSupportColumn(...)`: 添加单根支撑柱。
-- `addBrickSupportColumns(...)`: 为砖块批量补支撑柱。
-- `repairDisconnectedBricksToVoxels(bricks)`: 把断开的 brick 组件转换为可修复 voxel 并补桥。
-- `layerBoundaryKeys(cells)`: 计算层边界/缝隙 key。
-- `scoreSeamInterlock(candidateCells, existingBricks)`: 评估上下层是否错缝互锁。
-- `scoreBrickSeamInterlock(bricks)`: 计算整体模型错缝互锁评分。
-
-### `src/5_types.ts`
-
-- `LegoPart`: 零件清单项。
-- `BuildHistory`: 生成历史记录。
-- `AppState`: 3D 引擎状态，包括 `STABLE`、`DISMANTLING`、`REBUILDING`。
-- `VoxelData`: voxel 坐标和颜色。
-- `BrickType`: 支持的砖块类型，包括 `1x1`、`1x2`、`1x3`、`1x4`、`2x2`、`2x3`、`2x4`、`2x6`、`2x8`。
-- `BrickCell`: 单个砖块内部占用格。
-- `BrickData`: 可序列化砖块数据。
-- `SimulationBrick`: 3D/物理运行时砖块状态。
-- `RebuildTarget`: rebuild 动画目标。
-- `SavedModel`: 前端保存模型结构。
-- `PersistedBuildRecord`: 数据库/API 保存记录结构。
-
-### `scripts/5_physical-constraints.test.ts`
-
-- `assert(condition, message)`: 简单断言函数。
-- `hasVoxel(voxels, x, y, z)`: 判断 voxel 列表中是否包含指定坐标。
-- 测试内容：悬空补支撑、悬臂限制、断开组件修复、同层接触不算真实连接、地面同层接触不等于底板连接、合法/非法悬臂、错缝评分、多规格砖块合并。
-
-### 兼容入口
-
-- `api/generate-voxel.ts`: 转发 `api/5_generate-voxel.impl.ts`，源码中写作 `./5_generate-voxel.impl.js`，避免 Vercel 部署后出现 `ERR_MODULE_NOT_FOUND`。
-- `src/lib/brickLayout.ts`: 转发 `src/lib/5_brickLayout.ts`。
-- `src/lib/physicalConstraints.ts`: 转发 `src/lib/5_physicalConstraints.ts`。
-- `src/types.ts`: 转发 `src/5_types.ts`。
-- `scripts/physical-constraints.test.ts`: 引入 `scripts/5_physical-constraints.test.ts`。
-
-## 9. 6 号成员：部署、依赖与文档
-
-### `package.json`
-
-- 管理项目脚本和依赖。
-- `dev`: 启动 Vite 开发服务器。
-- `build`: 构建生产版本。
-- `preview`: 预览生产构建。
-- `clean`: 清理 `dist`。
-- `lint`: 执行 TypeScript 类型检查。
-
-### `package-lock.json`
-
-- 锁定依赖版本，保证不同设备安装结果一致。
-
-### `tsconfig.json`
-
-- 配置 TypeScript、React JSX、模块解析、DOM 类型和路径 alias。
-
-### `vercel.json`
-
-- 配置 Vercel 部署、路由和 serverless API 行为。
-
-### `.env.example`
-
-- 说明必须配置的环境变量，尤其是 `GEMINI_API_KEY`。
-
-### `.gitignore`
-
-- 忽略依赖、构建输出、环境变量文件和本地生成数据。
-
-### `README.md`
-
-- 项目说明、运行方式、部署说明。
-
-### `VERCEL_IMAGE_TEXT_ISSUE_FIX.md`
-
-- 说明 Vercel 与 AI Studio 在图片/文字生成上表现不同的原因及修复方式。
-
-### `metadata.json`
-
-- 项目元数据文件。
-
-### `TEAM_FILE_FUNCTION_BREAKDOWN.md`
-
-- 当前分工与文件函数说明文档。
-
-### `index.html`
-
-- 浏览器 HTML 入口，提供 React 挂载点 `#root`。
-
-## 10. 项目整体流程
-
-1. 1 号成员提供应用入口、布局和全局视觉样式。
-2. 2 号成员在生成器页面接收文字、图片、JSON 或预设模型输入。
-3. 5 号成员通过 Gemini 或本地 fallback 生成 voxel，并转换成多规格 LEGO 砖块。
-4. 5 号成员继续执行支撑、连接、错缝、地基、桥接和可制造性校验。
-5. 3 号成员使用 Three.js 渲染真实 LEGO 风格模型，包括凸点、下方孔洞、隐藏被覆盖凸点和 rebuild/dismantle 动画。
-6. 4 号成员通过 API 和 SQLite 保存、读取、删除模型记录。
-7. 6 号成员负责部署配置、环境变量、依赖管理和最终文档。
-
-## 11. 当前已完成内容
-
-- 已实现文字生成、图片生成、本地预设 fallback。
-- 已支持多规格砖块：`1x1`、`1x2`、`1x3`、`1x4`、`2x2`、`2x3`、`2x4`、`2x6`、`2x8`。
-- 已加入真实拼接相关逻辑：下方支撑、上下层 stud 连接、断开组件桥接、交错地基、支撑柱、错缝评分。
-- 已在 3D 视觉上加入上方凸点、下方连接孔/管、上下拼接时隐藏被覆盖凸点。
-- 已实现 Saved Builds 数据库存储与数据库面板。
-- 已保留 Vercel 与本地开发都可识别的兼容入口文件。
+| 1号 | 前端应用入口与挂载 | `src/1_App.tsx` `src/1_main.tsx` `src/1_index.css` |
+| 2号 | 生成页交互与调用编排 | `src/pages/2_Generator.tsx` |
+| 3号 | 3D 引擎与预设模型 | `src/services/3_VoxelEngine.ts` `src/lib/3_voxelConstants.ts` `src/lib/3_voxelGenerators.ts` |
+| 4号 | 本地 API 桥接与开发配置 | `4_vite.config.impl.ts` |
+| 5号 | 后端生成 API 与物理可行性算法 | `api/5_generate-voxel.impl.ts` `src/lib/5_physicalConstraints.ts` `src/lib/5_brickLayout.ts` `src/5_types.ts` `scripts/5_physical-constraints.test.ts` |
+| 6号 | 项目整合、兼容入口、文档与部署 | `src/App.tsx` `src/main.tsx` `src/index.css` `src/components/Layout.tsx` `src/pages/Generator.tsx` `src/services/VoxelEngine.ts` `src/lib/voxel*.ts` `api/generate-voxel.ts` `README.md` `vercel.json` `package.json` 等 |
+
+## 3. 兼容入口文件映射（无业务逻辑）
+
+这些文件只做转发，目的是兼容框架默认入口，不承载核心算法：
+
+- `src/App.tsx` -> `src/1_App.tsx`
+- `src/main.tsx` -> `src/1_main.tsx`
+- `src/index.css` -> `src/1_index.css`
+- `src/components/Layout.tsx` -> `src/components/1_Layout.tsx`
+- `src/pages/Generator.tsx` -> `src/pages/2_Generator.tsx`
+- `src/services/VoxelEngine.ts` -> `src/services/3_VoxelEngine.ts`
+- `src/lib/voxelConstants.ts` -> `src/lib/3_voxelConstants.ts`
+- `src/lib/voxelGenerators.ts` -> `src/lib/3_voxelGenerators.ts`
+- `src/lib/brickLayout.ts` -> `src/lib/5_brickLayout.ts`
+- `src/lib/physicalConstraints.ts` -> `src/lib/5_physicalConstraints.ts`
+- `src/types.ts` -> `src/5_types.ts`
+- `api/generate-voxel.ts` -> `api/5_generate-voxel.impl.ts`
+- `scripts/physical-constraints.test.ts` -> `scripts/5_physical-constraints.test.ts`
+
+## 4. 核心文件与函数级说明
+
+## 4.1 1号成员：前端入口层
+
+### 文件：`src/1_App.tsx`
+- `App()`：应用根组件，负责把 `Layout` 与 `Generator` 组合起来。
+
+### 文件：`src/1_main.tsx`
+- `createRoot(...).render(...)`：React 挂载入口，启用 `StrictMode`，加载全局样式并渲染 `App`。
+
+### 文件：`src/1_index.css`
+- 全局样式入口文件（无函数），定义基础样式与主题。
+
+## 4.2 2号成员：生成页与交互编排
+
+### 文件：`src/pages/2_Generator.tsx`
+
+#### 顶层工具函数
+- `compilePhysicalModel(data, bricks?)`：统一把 voxel 与 brick 组装为引擎加载结构。
+- `buildPresetModel(name)`：调用预设生成器并返回可直接渲染的物理模型。
+- `formatBuildMode(mode)`：把内部模式值映射为 UI 显示文案。
+
+#### 组件内关键函数（`Generator`）
+- `syncPartsFromBricks(bricks)`：根据砖块统计零件清单与数量。
+- `loadModel(name, data, bricks?)`：整模型加载（初始/切换场景）。
+- `rebuildModel(name, data, bricks?)`：拆解后重建动画入口。
+- `persistBuild(build)`：将生成记录保存到前端会话内存（非数据库）。
+- `handlePresetBuild(name)` / `handleQuickPreset(name)`：预设模型快速加载。
+- `getLocalPresetFromPrompt(value)`：关键词命中本地 Fox/Tiger，减少远程 API 依赖。
+- `handleToggleRotation()`：切换自动旋转。
+- `handleLoadSavedBuild(build)`：从 Saved Builds 重载。
+- `handleGenerate(mode)`：核心请求链路函数：
+  - 校验输入；
+  - 组装 `mode/prompt/paletteHint/referenceImage`；
+  - 调用 `POST /api/generate-voxel`；
+  - 解析返回的 `voxels/bricks`；
+  - 更新引擎与 UI 状态，并写入会话保存列表。
+- `openExportModal()` / `openImportModal()`：JSON 导入导出弹窗控制。
+- `handleJsonImport()`：把 JSON 文本解析为 voxel 并加载。
+- `handleCopyJson()`：复制当前 JSON。
+- `handleExportParts()`：导出零件清单文本。
+
+## 4.3 3号成员：3D 引擎与预设模型
+
+### 文件：`src/services/3_VoxelEngine.ts`
+
+#### 类：`VoxelEngine`
+- `constructor(...)`：初始化 `three.js` 场景、相机、灯光、控制器、状态回调。
+- `loadInitialModel(data, brickData?)`：加载模型并建立实例化网格。
+- `rebuild(targetModel, brickData?)`：执行“由碎块到目标”的重建流程。
+- `dismantle()`：执行拆解动画。
+- `handleResize()`：窗口变化时更新相机与渲染器。
+- `setAutoRotate(enabled)`：控制自动旋转。
+- `focusModel(data, brickData?)`：模型居中与镜头重置。
+- `getJsonData()`：导出当前模型 JSON。
+- `getUniqueColors()`：返回当前模型颜色集合。
+- `cleanup()`：销毁几何体、材质、事件和动画帧。
+- `createBricks(...)`：将 brick 数据转换为渲染实例与物理状态。
+- `fitCameraToBricks(...)` / `applyCameraFraming()`：镜头包围盒自适应。
+- `draw()`：每帧绘制与实例矩阵更新。
+- `getColorDist(...)`：颜色距离计算，用于重建匹配。
+- `updatePhysics()`：处理拆解/重建中的速度、位置、目标吸附。
+- `animate()`：主循环，驱动 physics + render。
+- `getVoxelData()` / `getTotalCells()`：内部统计与导出辅助。
+- `disposeInstancedMesh(...)`：实例网格释放。
+
+### 文件：`src/lib/3_voxelConstants.ts`
+- `COLORS`：颜色常量集合。
+- `CONFIG`：引擎参数常量（尺寸、重力、动画速度、边界等）。
+
+### 文件：`src/lib/3_voxelGenerators.ts`
+- `setBlock(...)`：向体素映射写入单元。
+- `generateSphere(...)`：生成球形/椭球体素区域。
+- `Generators`：预设模型工厂对象（如 Fox/Tiger/Eagle），用于本地快速生成。
+
+## 4.4 4号成员：本地 API 桥接
+
+### 文件：`4_vite.config.impl.ts`
+- `createNodeStyleResponse(res)`：把 Node `ServerResponse` 包装成类 Express 响应对象。
+- `readJsonBody(req)`：读取并解析请求体 JSON。
+- `localApiPlugin()`：Vite 中间件插件，把本地 `/api/generate-voxel` 转发到 TS 处理器。
+- `runHandler(...)`（插件内）：按路由动态加载 API 模块并执行。
+- `defineConfig(...)`：Vite 配置导出，含 React、Tailwind、本地 API 插件、别名、HMR 开关。
+
+## 4.5 5号成员：后端生成 API 与物理算法（核心）
+
+### 文件：`api/5_generate-voxel.impl.ts`
+
+#### 入口与协议
+- `config`：API bodyParser 配置（含图片上传大小上限）。
+- `handler(req, res)`：API 主入口；处理 `OPTIONS/POST`、参数校验、模型调用、后处理与返回。
+- `getCorsHeaders(req)` / `jsonResponse(...)`：跨域与统一响应封装。
+
+#### Prompt 与模型调用
+- `buildSystemPrompt(mode, prompt, paletteHint)`：按文本/图片模式构造约束化提示词。
+- `getModelChain()`：读取模型链配置，支持多模型回退。
+- `isRetryableModelError(error)`：识别可重试错误（429/5xx/timeout）。
+- `getLocalPresetFromPrompt(value)`：本地预设短路逻辑。
+
+#### 数据规范化与网格工具
+- `toVoxelColor(color)`：颜色字符串转整数。
+- `cellKey(...)` / `parseCellKey(...)`：体素键值编解码。
+- `dedupeVoxels(...)`：同坐标去重。
+
+#### 砖块构建与合并
+- `canPlaceBrick(...)` / `markBrickCells(...)` / `generateBrickCells(...)`：砖块放置基础。
+- `isDetailCell(...)` / `isCriticalDetailCell(...)` / `canUseBrickPattern(...)`：细节保护，避免大砖抹掉关键特征。
+- `getOrientations(...)`：同规格旋转尝试策略。
+- `voxelToBricks(...)` / `buildBricksFromColorMap(...)`：体素到砖块主转换。
+- `buildBricksForTargetRange(...)`：按目标数量区间选择更合适构型。
+- `enhanceVoxelResolution(...)` / `ensureSculpturalVolume(...)`：体素增强与体积补偿。
+- `mergeCommonBricksTowardTarget(...)` / `tryMergeCommonBrickPair(...)`：可合并砖块融合，减少碎片化。
+- `enforceConnectedBricks(...)`：强制提升连通性。
+- `bricksToVoxels(...)`：砖块回转体素。
+
+#### 物理与可制造性校验
+- `validateBrickConnectivity(...)`：连通分量、孤立块校验。
+- `validateManufacturability(...)`：网格对齐、重叠、连通、拼装可行性综合判断。
+- `repairVoxelConnectivity(...)`：调用物理约束库做桥接修复。
+- `compactVoxelsForTightContact(...)`：局部贴合压实尝试。
+- `findConnectedComponentsFromVoxels(...)` / `closestPairByXZ(...)`：组件分析与最近对接点计算。
+
+### 文件：`src/lib/5_physicalConstraints.ts`
+
+#### 基础工具
+- `cellKey(...)` / `parseCellKey(...)`：坐标键工具。
+- `normalizeVoxels(...)`：体素归一化与去重。
+- `sameLayerNeighborKeys(...)`：同层邻接键生成。
+
+#### 悬空/悬挑控制
+- `hasVerticalSupport(...)`：判断是否有垂直支撑。
+- `hasSupportedNeighborWithinDistance(...)`：限定悬挑距离内是否能借支撑。
+- `enforceVoxelSupport(...)`：为不满足条件体素补支撑柱。
+
+#### 砖块连通分析
+- `shareAnyCellXZ(...)`：跨层投影重合检测。
+- `hasStudSupport(...)`：砖块是否被下层 stud 支撑。
+- `isBrickOverextended(...)`：判断过度悬挑。
+- `analyzeBrickConnectivity(...)`：输出连通分量、孤立砖、无支撑砖、过悬挑砖。
+
+#### 连接修复与脚手架
+- `createStudBridgeScaffoldBricks(...)`：为断裂组件生成桥接砖。
+- `createInterlockedFoundationBricks(...)`：生成互锁地基层，改善底层整体性。
+- `createSupportColumnScaffoldBricks(...)`：为问题砖补支撑柱。
+- `repairDisconnectedBricksToVoxels(...)`：把断连修复落到 voxel 级输出。
+
+#### 缝合质量评分
+- `scoreSeamInterlock(...)`：单候选层间缝合交错评分。
+- `scoreBrickSeamInterlock(...)`：全模型平均缝合评分。
+
+### 文件：`src/lib/5_brickLayout.ts`
+
+#### 体素/砖块互转主流程
+- `voxelsToBricks(voxels)`：主转换入口（多规格砖 + 连通修复）。
+- `normalizeBricks(value, fallbackVoxels)`：后端返回砖块归一化，异常时回退重建。
+- `bricksToVoxels(bricks)`：砖块展开为体素。
+- `stabilizeBrickSupports(...)`：按支撑需求重建砖布局。
+- `enhanceVoxelResolution(...)`：提升体素密度，利于中大规格砖生成。
+
+#### 内部关键函数
+- `canPlaceBrick(...)` / `createCells(...)` / `markCells(...)`：放置与占用计算。
+- `isDetailCell(...)` / `isCriticalDetailCell(...)` / `canUseBrickPattern(...)`：细节保护策略。
+- `buildBricksFromVoxels(...)` / `buildBricksFromColorMap(...)`：转换核心。
+- `mergeCommonBricksTowardTarget(...)` / `tryMergeCommonBrickPair(...)`：融合优化。
+- `enforceConnectedBricks(...)` / `chooseBestBrickCandidate(...)`：候选结构选择与连通加强。
+
+### 文件：`src/5_types.ts`
+- 统一定义前后端共享数据结构：
+  - `VoxelData`、`BrickData`、`BrickType`、`SavedModel`、
+  - `SimulationBrick`、`RebuildTarget`、`LegoPart`、`BuildHistory` 等。
+
+### 文件：`scripts/5_physical-constraints.test.ts`
+- 物理约束测试脚本入口（通过 `scripts/physical-constraints.test.ts` 转发）。
+
+## 4.6 6号成员：整合与部署
+
+### 代表文件与作用
+- `src/components/1_Layout.tsx`：全局页面骨架（顶栏、主区容器）。
+- `README.md`：运行说明、Vercel 部署要点、已移除数据库说明。
+- `vercel.json`：Vercel 路由/函数部署配置。
+- `package.json` / `tsconfig.json` / `index.html` / `.env.example`：工程配置与运行入口。
+
+## 5. 任务流程（从输入到 3D 输出）
+
+1. 用户在 `2_Generator.tsx` 输入文字或上传图片。  
+2. 前端调用 `POST /api/generate-voxel`，提交 `mode/prompt/paletteHint/referenceImage`。  
+3. `5_generate-voxel.impl.ts` 构建 Prompt，调用 Gemini 并要求 JSON 体素输出。  
+4. 后端执行体素清洗、体素转多规格砖块、连通性与可制造性校验。  
+5. 若存在断连或物理不可行，调用 `5_physicalConstraints.ts` 自动桥接/补撑后重算。  
+6. 返回 `voxels + bricks + validation + repairStats`。  
+7. 前端 `VoxelEngine` 载入模型并渲染，UI 同步零件清单与历史记录。  
+
+## 6. 版本对比（首版 vs 现版）
+
+### 首版（已知问题）
+- 以 `1x1` 为主，砖型单一；
+- 砖块总量偏少，结构表达粗糙；
+- 缺少系统化物理校验，易出现断连/悬空；
+- 缝合交错与可制造性约束不足。
+
+### 现版（当前仓库）
+- 支持多规格砖：`1x1/1x2/1x3/1x4/2x2/2x3/2x4/2x6/2x8`；
+- 引入砖块合并、候选结构选择、连通增强；
+- 增加断连修复、支撑补偿、地基互锁、缝合评分；
+- 输出更接近真实可拼装的 LEGO 风格模型。

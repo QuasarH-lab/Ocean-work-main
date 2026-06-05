@@ -1,3 +1,4 @@
+// 负责人：6号成员
 import React from 'react';
 import { Activity, Box, Cpu } from 'lucide-react';
 

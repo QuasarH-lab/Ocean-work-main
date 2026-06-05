@@ -1,3 +1,4 @@
+// 负责人：3号成员
 import type { VoxelData } from '../5_types.js';
 import { COLORS, CONFIG } from './3_voxelConstants.js';
 

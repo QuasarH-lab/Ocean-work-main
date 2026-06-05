@@ -1,3 +1,4 @@
+// 负责人：4号成员
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import dotenv from 'dotenv';
 import tailwindcss from '@tailwindcss/vite';
@@ -51,7 +52,6 @@ async function readJsonBody(req: IncomingMessage) {
 
 function localApiPlugin(): Plugin {
   const handlers = new Map<string, string>([
-    ['/api/builds', path.resolve(__dirname, 'api', 'builds.ts')],
     ['/api/generate-voxel', path.resolve(__dirname, 'api', 'generate-voxel.ts')],
   ]);
 

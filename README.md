@@ -1,3 +1,4 @@
+<!-- 负责人：6号成员 -->
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
@@ -30,14 +31,10 @@ This project now provides a server endpoint:
 The frontend calls this endpoint first, and the endpoint uses `GEMINI_API_KEY` on the server.  
 Set `GEMINI_API_KEY` in Vercel Project Settings -> Environment Variables.
 
-## Local database
+## Saved builds
 
-This project now includes a local SQLite database for saved voxel builds.
+Database persistence has been removed from this version to keep the Vercel deployment simple and avoid serverless SQLite/runtime issues.
 
-- Database file: `.data/ocean.db`
-- Schema file: `db/schema.sql`
-- API endpoint: `GET/POST /api/builds`
-
-Use it locally to persist generated, rebuilt, and imported models.
-
-Important: SQLite file storage inside Vercel serverless runtime is ephemeral, so this setup is for local/dev persistence. For production persistence on Vercel, move the same schema to a hosted database such as Neon, Supabase, or PostgreSQL.
+- Generated, imported, and rebuilt models are kept in the current browser session.
+- Refreshing the page clears the in-memory saved-build list.
+- JSON export/import is still available for keeping or reloading model data manually.
