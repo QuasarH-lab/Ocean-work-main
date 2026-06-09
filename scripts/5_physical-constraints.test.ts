@@ -1,4 +1,4 @@
-// 负责人：6号成员
+// Owner: Member 5 (Xu Zichen)
 import { voxelsToBricks } from '../src/lib/5_brickLayout.js';
 import {
   analyzeBrickConnectivity,

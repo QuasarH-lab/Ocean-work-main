@@ -1,4 +1,4 @@
-// 负责人：6号成员
+// Owner: Member 1 (He Linlin)
 import React from 'react';
 import { Activity, Box, Cpu } from 'lucide-react';
 

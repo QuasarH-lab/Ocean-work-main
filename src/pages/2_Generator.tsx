@@ -1,4 +1,4 @@
-// ¸ºÔğÈË£º2ºÅ³ÉÔ±
+// Owner: Member 2 (Huang Shuna)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -255,7 +255,7 @@ export default function Generator() {
       const normalizedPrompt = prompt.trim().toLowerCase();
       const shouldUseLocalFox =
         mode === 'create' &&
-        (normalizedPrompt.includes('fox') || normalizedPrompt.includes('ç‹ç‹¸') || normalizedPrompt.includes('å°ç‹ç‹?));
+        (normalizedPrompt.includes('fox') || normalizedPrompt.includes('ç‹ç‹¸') || normalizedPrompt.includes('å°ç‹ï¿½?));
 
       if (shouldUseLocalFox) {
         const model = buildPresetModel('Fox');

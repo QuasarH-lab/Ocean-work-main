@@ -1,4 +1,4 @@
-// 负责人：4号成员
+// Owner: Member 4 (Liu Shuoyang)
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import dotenv from 'dotenv';
 import tailwindcss from '@tailwindcss/vite';

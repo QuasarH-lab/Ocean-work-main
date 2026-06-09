@@ -1,4 +1,4 @@
-// 负责人：5号成员
+// Owner: Member 5 (Xu Zichen)
 export interface LegoPart {
   id: string;
   name: string;

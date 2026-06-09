@@ -1,4 +1,4 @@
-// 负责人：1号成员
+// Owner: Member 1 (He Linlin)
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './1_App.tsx';

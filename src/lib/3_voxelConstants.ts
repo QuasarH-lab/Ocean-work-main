@@ -1,4 +1,4 @@
-// 负责人：3号成员
+// Owner: Member 3 (Wu Enze, Team Leader)
 export const COLORS = {
   DARK: 0x4a3728,
   LIGHT: 0x654321,

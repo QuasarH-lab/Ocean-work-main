@@ -1,4 +1,4 @@
-// 负责人：3号成员
+// Owner: Member 3 (Wu Enze, Team Leader)
 import type { VoxelData } from '../5_types.js';
 import { COLORS, CONFIG } from './3_voxelConstants.js';
 

@@ -1,2 +1,2 @@
-// 负责人：6号成员
+// Owner: Member 6 (Bai Yule)
 import './1_main.tsx';
