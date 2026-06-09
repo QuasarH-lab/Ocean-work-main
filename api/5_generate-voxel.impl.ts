@@ -1,4 +1,8 @@
-// Owner: Member 5 (Xu Zichen)
+/*
+File: api\5_generate-voxel.impl.ts
+Responsible team member: Xu Zichen
+Description: Main generation API for prompt handling, Gemini calls, and brick validation.
+*/
 import { GoogleGenAI, Type } from '@google/genai';
 import {
   analyzeBrickConnectivity,

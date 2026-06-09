@@ -1,4 +1,8 @@
-// Owner: Member 3 (Wu Enze, Team Leader)
+/*
+File: src\lib\3_voxelGenerators.ts
+Responsible team member: Wu Enze (Team Leader)
+Description: Local preset voxel generators for quick LEGO-style models.
+*/
 import type { VoxelData } from '../5_types.js';
 import { COLORS, CONFIG } from './3_voxelConstants.js';
 

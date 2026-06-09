@@ -1,4 +1,8 @@
-// Owner: Member 2 (Huang Shuna)
+/*
+File: src\pages\2_Generator.tsx
+Responsible team member: Huang Shuna
+Description: Generator workspace for prompt input, image upload, saved builds, and model actions.
+*/
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {

@@ -18,12 +18,12 @@
 
 | 成员 | 负责方向 | 主要文件 |
 |---|---|---|
-| 1号 | 前端应用入口与挂载 | `src/1_App.tsx` `src/1_main.tsx` `src/1_index.css` |
-| 2号 | 生成页交互与调用编排 | `src/pages/2_Generator.tsx` |
-| 3号 | 3D 引擎与预设模型 | `src/services/3_VoxelEngine.ts` `src/lib/3_voxelConstants.ts` `src/lib/3_voxelGenerators.ts` |
-| 4号 | 本地 API 桥接与开发配置 | `4_vite.config.impl.ts` |
-| 5号 | 后端生成 API 与物理可行性算法 | `api/5_generate-voxel.impl.ts` `src/lib/5_physicalConstraints.ts` `src/lib/5_brickLayout.ts` `src/5_types.ts` `scripts/5_physical-constraints.test.ts` |
-| 6号 | 项目整合、兼容入口、文档与部署 | `src/App.tsx` `src/main.tsx` `src/index.css` `src/components/Layout.tsx` `src/pages/Generator.tsx` `src/services/VoxelEngine.ts` `src/lib/voxel*.ts` `api/generate-voxel.ts` `README.md` `vercel.json` `package.json` 等 |
+| He Linlin | Frontend entry and app shell | `src/1_App.tsx` `src/1_main.tsx` `src/1_index.css` |
+| Huang Shuna | Generator page interaction and orchestration | `src/pages/2_Generator.tsx` |
+| Wu Enze (Team Leader) | 3D engine and preset models | `src/services/3_VoxelEngine.ts` `src/lib/3_voxelConstants.ts` `src/lib/3_voxelGenerators.ts` |
+| Liu Shuoyang | Local API bridge and dev runtime config | `4_vite.config.impl.ts` |
+| Xu Zichen | Generation API and physical feasibility algorithms | `api/5_generate-voxel.impl.ts` `src/lib/5_physicalConstraints.ts` `src/lib/5_brickLayout.ts` `src/5_types.ts` `scripts/5_physical-constraints.test.ts` |
+| Bai Yule | Integration, compatibility entries, docs, and deployment | `src/App.tsx` `src/main.tsx` `src/index.css` `src/components/Layout.tsx` `src/pages/Generator.tsx` `src/services/VoxelEngine.ts` `src/lib/voxel*.ts` `api/generate-voxel.ts` `README.md` `vercel.json` `package.json` 等 |
 
 ## 3. 兼容入口文件映射（无业务逻辑）
 
@@ -45,7 +45,7 @@
 
 ## 4. 核心文件与函数级说明
 
-## 4.1 1号成员：前端入口层
+## 4.1 He Linlin: Frontend Entry
 
 ### 文件：`src/1_App.tsx`
 - `App()`：应用根组件，负责把 `Layout` 与 `Generator` 组合起来。
@@ -56,7 +56,7 @@
 ### 文件：`src/1_index.css`
 - 全局样式入口文件（无函数），定义基础样式与主题。
 
-## 4.2 2号成员：生成页与交互编排
+## 4.2 Huang Shuna: Generator Orchestration
 
 ### 文件：`src/pages/2_Generator.tsx`
 
@@ -85,7 +85,7 @@
 - `handleCopyJson()`：复制当前 JSON。
 - `handleExportParts()`：导出零件清单文本。
 
-## 4.3 3号成员：3D 引擎与预设模型
+## 4.3 Wu Enze (Team Leader): 3D Engine and Presets
 
 ### 文件：`src/services/3_VoxelEngine.ts`
 
@@ -118,7 +118,7 @@
 - `generateSphere(...)`：生成球形/椭球体素区域。
 - `Generators`：预设模型工厂对象（如 Fox/Tiger/Eagle），用于本地快速生成。
 
-## 4.4 4号成员：本地 API 桥接
+## 4.4 Liu Shuoyang: Local API Bridge
 
 ### 文件：`4_vite.config.impl.ts`
 - `createNodeStyleResponse(res)`：把 Node `ServerResponse` 包装成类 Express 响应对象。
@@ -127,7 +127,7 @@
 - `runHandler(...)`（插件内）：按路由动态加载 API 模块并执行。
 - `defineConfig(...)`：Vite 配置导出，含 React、Tailwind、本地 API 插件、别名、HMR 开关。
 
-## 4.5 5号成员：后端生成 API 与物理算法（核心）
+## 4.5 Xu Zichen: Generation API and Physical Algorithms
 
 ### 文件：`api/5_generate-voxel.impl.ts`
 
@@ -217,7 +217,7 @@
 ### 文件：`scripts/5_physical-constraints.test.ts`
 - 物理约束测试脚本入口（通过 `scripts/physical-constraints.test.ts` 转发）。
 
-## 4.6 6号成员：整合与部署
+## 4.6 Bai Yule: Integration and Deployment
 
 ### 代表文件与作用
 - `src/components/1_Layout.tsx`：全局页面骨架（顶栏、主区容器）。

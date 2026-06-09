@@ -1,4 +1,8 @@
-// Owner: Member 4 (Liu Shuoyang)
+/*
+File: 4_vite.config.impl.ts
+Responsible team member: Liu Shuoyang
+Description: Vite configuration and local API bridge for development runtime compatibility.
+*/
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import dotenv from 'dotenv';
 import tailwindcss from '@tailwindcss/vite';

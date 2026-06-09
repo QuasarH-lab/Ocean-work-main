@@ -1,4 +1,8 @@
-// Owner: Member 5 (Xu Zichen)
+/*
+File: src\lib\5_physicalConstraints.ts
+Responsible team member: Xu Zichen
+Description: Physical feasibility checks, support repair, and seam scoring helpers.
+*/
 export interface ConstraintVoxel {
   x: number;
   y: number;

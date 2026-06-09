@@ -1,4 +1,8 @@
-// Owner: Member 5 (Xu Zichen)
+/*
+File: src\lib\5_brickLayout.ts
+Responsible team member: Xu Zichen
+Description: Voxel-to-brick conversion and brick layout normalization utilities.
+*/
 import { BrickData, BrickType, VoxelData } from '../5_types.js';
 import {
   analyzeBrickConnectivity,

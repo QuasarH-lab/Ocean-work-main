@@ -1,4 +1,8 @@
-// Owner: Member 3 (Wu Enze, Team Leader)
+/*
+File: src\lib\3_voxelConstants.ts
+Responsible team member: Wu Enze (Team Leader)
+Description: Shared voxel constants for colors, sizes, and engine settings.
+*/
 export const COLORS = {
   DARK: 0x4a3728,
   LIGHT: 0x654321,

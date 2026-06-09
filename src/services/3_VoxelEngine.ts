@@ -1,4 +1,8 @@
-// Owner: Member 3 (Wu Enze, Team Leader)
+/*
+File: src\services\3_VoxelEngine.ts
+Responsible team member: Wu Enze (Team Leader)
+Description: Three.js voxel engine for rendering, animation, and rebuild behavior.
+*/
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';

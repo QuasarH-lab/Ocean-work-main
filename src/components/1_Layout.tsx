@@ -1,4 +1,8 @@
-// Owner: Member 1 (He Linlin)
+/*
+File: src\components\1_Layout.tsx
+Responsible team member: He Linlin
+Description: Shared page shell that renders the header and main content area.
+*/
 import React from 'react';
 import { Activity, Box, Cpu } from 'lucide-react';
 
