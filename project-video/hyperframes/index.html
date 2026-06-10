@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="300" data-width="1920" data-height="1080">
+  <section id="scene1" class="scene">
+    <div class="grid-bg"></div><div class="orb a" data-layout-ignore></div><div class="orb b" data-layout-ignore></div>
+    <div class="scene-content">
+      <div class="topline intro"><span class="eyebrow">CS183 · Version Comparison</span><span class="timecode">00:00 — 00:20</span></div>
+      <div class="rule intro"></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px">
+        <div class="tag shared intro"><span class="dot"></span>Five-minute engineering review</div>
+        <h1 class="intro">From Voxel Prototype to Buildable LEGO System</h1>
+        <p class="lead intro">How a visual AI demo evolved into a more structured, stable, and physically credible construction pipeline.</p>
+      </div>
+      <div class="two-col" style="flex:0 0 190px">
+        <div class="paper callout intro" style="border-color:#F2B59D"><span class="tag old"><span class="dot"></span>BEFORE</span><h3 style="margin-top:18px">Voxel-first prototype</h3></div>
+        <div class="paper callout intro" style="border-color:#A6D7BF"><span class="tag new"><span class="dot"></span>AFTER</span><h3 style="margin-top:18px">Mixed-brick construction system</h3></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene2" class="scene">
+    <div class="grid-bg"></div>
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s2">Shared Foundation</div><h2 class="s2">The creative pipeline stays familiar</h2></div><span class="timecode s2">00:20 — 00:50</span></div>
+      <p class="lead s2">Both versions connect user intent to an interactive 3D result.</p>
+      <div class="flow">
+        <div class="paper flow-node s2"><div class="flow-icon">Aa</div><h3>Text or Image</h3><p class="metric-label">Prompt and reference input</p></div>
+        <div class="arrow s2"></div>
+        <div class="paper flow-node s2"><div class="flow-icon">AI</div><h3>Gemini</h3><p class="metric-label">Structured generation</p></div>
+        <div class="arrow s2"></div>
+        <div class="paper flow-node s2"><div class="flow-icon">▦</div><h3>Voxel Data</h3><p class="metric-label">Coordinates and colors</p></div>
+        <div class="arrow s2"></div>
+        <div class="paper flow-node s2"><div class="flow-icon">3D</div><h3>Three.js</h3><p class="metric-label">Interactive rendering</p></div>
+      </div>
+      <div style="display:flex;gap:18px" class="s2"><span class="tag shared">JSON Import / Export</span><span class="tag shared">Auto Rotation</span><span class="tag shared">Break & Rebuild</span></div>
+    </div>
+  </section>
+
+  <section id="scene3" class="scene">
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s3" style="color:#A84525">Earlier Version · Actual Run</div><h2 class="s3">A complete demo, built from single cells</h2></div><span class="timecode s3">00:50 — 01:30</span></div>
+      <div class="two-col">
+        <div class="paper shot s3">
+          <div class="shot-label"><span>Eagle preset</span><span class="tag old">LIVE CAPTURE</span></div>
+          <img src="assets/old-eagle.png" alt="Earlier version Eagle interface" crossorigin="anonymous" />
+          <div class="focus-ring" style="right:17px;top:102px;width:282px;height:275px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="paper metric s3" style="border-color:#F2B59D"><span class="metric-label">Rendered geometry</span><strong class="metric-value" style="color:#A84525">932 voxels</strong><span class="mono">Eagle</span></div>
+          <div class="paper metric s3" style="border-color:#F2B59D"><span class="metric-label">Reported inventory</span><strong class="metric-value" style="color:#A84525">932 parts</strong><span class="mono">Nearly all 1×1 bricks</span></div>
+          <div class="callout s3"><h3>Visible limitation</h3><p>Recognizable at a distance, but highly fragmented as a construction plan. Cat and Rabbit controls are present but unavailable.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene4" class="scene">
+    <div class="grid-bg"></div>
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s4" style="color:#A84525">Structural Limits</div><h2 class="s4">Visual contact is not physical connection</h2></div><span class="timecode s4">01:30 — 01:55</span></div>
+      <div class="three-col">
+        <div class="paper structure s4"><span class="tag old">DISCONNECTED</span><div style="flex:1"></div><div class="layer"><i class="mini bad"></i><i class="mini bad"></i></div><div style="height:80px"></div><div class="layer"><i class="mini"></i><i class="mini"></i><i class="mini"></i></div><h3 style="margin-top:28px">Floating Region</h3></div>
+        <div class="paper structure s4"><span class="tag old">SIDE CONTACT</span><div style="flex:1"></div><div class="layer"><i class="mini bad"></i><i class="mini bad"></i></div><div class="layer" style="transform:translateX(70px)"><i class="mini"></i><i class="mini"></i></div><h3 style="margin-top:28px">Weak Connectivity</h3></div>
+        <div class="paper structure s4"><span class="tag old">OVEREXTENDED</span><div style="flex:1"></div><div class="layer" style="transform:translateX(95px)"><i class="mini bad"></i><i class="mini bad"></i><i class="mini bad"></i></div><div class="layer"><i class="mini"></i></div><h3 style="margin-top:28px">Unsupported Cantilever</h3></div>
+      </div>
+      <p class="lead s4">The earlier pipeline prioritizes recognizable form, without a complete validation-and-repair layer.</p>
+    </div>
+  </section>
+
+  <section id="scene5" class="scene">
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s5" style="color:#176C47">New Design Goals</div><h2 class="s5">Change the question</h2></div><span class="timecode s5">01:55 — 02:20</span></div>
+      <div class="goal-grid">
+        <div class="paper goal hero s5"><span class="tag new">FROM APPEARANCE TO ASSEMBLY</span><h3 style="font-size:44px">Not only “Does it look right?”</h3><p>Also: “Can the geometry be organized as a believable brick structure?”</p><span class="mono" style="font-size:22px;color:#176C47">VOXELS → BRICKS → VALIDATION → REPAIR</span></div>
+        <div class="paper goal s5"><span>01</span><strong>Buildability</strong></div>
+        <div class="paper goal s5"><span>02</span><strong>Connectivity</strong></div>
+        <div class="paper goal s5"><span>03</span><strong>Structural Stability</strong></div>
+        <div class="paper goal s5"><span>04</span><strong>Maintainability</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene6" class="scene">
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s6" style="color:#176C47">New Brick and Physics System</div><h2 class="s6">Dense voxels become organized parts</h2></div><span class="timecode s6">02:20 — 03:20</span></div>
+      <div class="two-col" style="grid-template-columns:1.05fr .95fr">
+        <div style="display:flex;flex-direction:column;gap:22px;min-height:0">
+          <div class="paper shot s6" style="flex:1"><div class="shot-label"><span>Fox · 5,734 voxels</span><span class="tag new">1,317 PARTS</span></div><img src="assets/new-fox.png" alt="New version Fox interface" crossorigin="anonymous" /></div>
+          <div class="paper shot s6" style="flex:1"><div class="shot-label"><span>Tiger · 2,841 voxels</span><span class="tag new">636 PARTS</span></div><img src="assets/new-tiger.png" alt="New version Tiger interface" crossorigin="anonymous" /></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:22px;min-height:0">
+          <div class="paper" style="padding:25px;flex:1;display:flex;flex-direction:column"><h3 class="s6">Mixed-size brick library</h3><div class="brick-grid"><div class="brick w1 s6">1×1</div><div class="brick w2 s6">1×2</div><div class="brick w3 s6">1×3</div><div class="brick w4 s6">1×4</div><div class="brick w2 s6">2×2</div><div class="brick w3 s6">2×3</div><div class="brick w4 s6">2×4</div><div class="brick w6 s6">2×6</div><div class="brick w8 s6">2×8</div></div></div>
+          <div class="paper" style="padding:24px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+            <div class="s6" style="text-align:center"><strong>Support</strong><p class="metric-label">columns</p></div>
+            <div class="s6" style="text-align:center"><strong>Bridge</strong><p class="metric-label">repair</p></div>
+            <div class="s6" style="text-align:center"><strong>Cantilever</strong><p class="metric-label">limits</p></div>
+            <div class="s6" style="text-align:center"><strong>Foundation</strong><p class="metric-label">interlock</p></div>
+            <div class="s6" style="text-align:center"><strong>Seam</strong><p class="metric-label">scoring</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene7" class="scene">
+    <div class="grid-bg"></div>
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s7">Measured Difference</div><h2 class="s7">More detail, fewer physical parts per cell</h2></div><span class="timecode s7">03:20 — 03:55</span></div>
+      <div class="bars">
+        <div class="bar-row s7"><div class="bar-label">Earlier Eagle</div><div class="bar-track"><div class="bar-fill" style="width:38%;background:#E56B3F">932 voxels</div></div><div class="bar-note" style="color:#A84525">932 single-size parts</div></div>
+        <div class="bar-row s7"><div class="bar-label">New Fox</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:#2F8F63">5,734 voxels</div></div><div class="bar-note" style="color:#176C47">1,317 mixed-size parts</div></div>
+        <div class="bar-row s7"><div class="bar-label">New Tiger</div><div class="bar-track"><div class="bar-fill" style="width:64%;background:#2F8F63">2,841 voxels</div></div><div class="bar-note" style="color:#176C47">636 mixed-size parts</div></div>
+      </div>
+      <div class="paper callout s7" style="display:flex;align-items:center;justify-content:space-between;border-color:#A6D7BF"><h3>Geometric resolution no longer equals one separate part per cell.</h3><span class="tag new">VOXEL GROUPING</span></div>
+    </div>
+  </section>
+
+  <section id="scene8" class="scene">
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s8">Engineering Structure</div><h2 class="s8">Clearer boundaries and a smaller bundle</h2></div><span class="timecode s8">03:55 — 04:20</span></div>
+      <div class="two-col">
+        <div class="code-window s8"><span class="code-dim">// server-side generation boundary</span><br><span class="code-blue">POST</span> <span class="code-green">/api/generate-voxel</span><br><br><span class="code-dim">const</span> modelChain = [<br>&nbsp;&nbsp;<span class="code-orange">"gemini-2.5-flash-lite"</span><br>];<br><br><span class="code-dim">// explicit ownership</span><br><span class="code-green">1</span> · App and entry<br><span class="code-green">2</span> · Generator UI<br><span class="code-green">3</span> · Three.js engine<br><span class="code-green">4</span> · Local API bridge<br><span class="code-green">5</span> · Physics and layout<br><span class="code-green">6</span> · Integration</div>
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="paper metric s8"><span class="metric-label">Gemini credential</span><strong style="font-size:38px">Kept on the server</strong><span class="tag shared">SERVER API</span></div>
+          <div class="paper metric s8"><span class="metric-label">Compatibility strategy</span><strong style="font-size:38px">Thin entry files</strong><span class="mono">Vite · React · Vercel paths preserved</span></div>
+          <div class="paper metric s8" style="border-color:#A6D7BF"><span class="metric-label">Production JavaScript</span><strong class="metric-value"><span style="color:#A84525">1.21 MB</span> <span style="color:#2F6690">→</span> <span style="color:#176C47">0.94 MB</span></strong><span class="mono">approximately 22% smaller</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene9" class="scene">
+    <div class="grid-bg"></div>
+    <div class="scene-content">
+      <div class="topline"><div><div class="eyebrow s9">Final Comparison</div><h2 class="s9">What changed between versions</h2></div><span class="timecode s9">04:20 — 04:45</span></div>
+      <div class="compare-list">
+        <div class="paper compare-row s9"><span class="before">Single-size Parts</span><span class="compare-arrow">→</span><span class="after">Multi-size Brick Layout</span></div>
+        <div class="paper compare-row s9"><span class="before">Visual Similarity</span><span class="compare-arrow">→</span><span class="after">Structural Credibility</span></div>
+        <div class="paper compare-row s9"><span class="before">Basic Generation</span><span class="compare-arrow">→</span><span class="after">Validation and Repair</span></div>
+        <div class="paper compare-row s9"><span class="before">Limited Presets</span><span class="compare-arrow">→</span><span class="after">Working Fox and Tiger Models</span></div>
+        <div class="paper compare-row s9"><span class="before">Overlapping Logic</span><span class="compare-arrow">→</span><span class="after">Clear Module Ownership</span></div>
+        <div class="paper compare-row s9"><span class="before">Larger Bundle</span><span class="compare-arrow">→</span><span class="after">Smaller Bundle</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene10" class="scene">
+    <div class="grid-bg"></div><div class="orb a" data-layout-ignore></div><div class="orb b" data-layout-ignore></div>
+    <div class="scene-content closing">
+      <span class="tag new s10"><span class="dot"></span>CONCLUSION</span>
+      <h2 class="s10">The new version is more than a visual upgrade.</h2>
+      <p class="lead s10" style="max-width:1320px">It is a smaller, more structured, and more physically credible construction system.</p>
+      <div class="encoding-note s10">Packaging note: damaged text encoding in the new archive must be corrected before a direct build.</div>
+      <span class="eyebrow s10" style="margin-top:30px">CS183 · Ocean Work Version Review</span>
+    </div>
+  </section>
+</div>
+
+<script src="script.js"></script>
+<script>
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = window.__timelines["main"];
+</script>
+</body>
+</html>
