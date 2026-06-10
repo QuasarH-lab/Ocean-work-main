@@ -1,4 +1,8 @@
-// ¸ºÔğÈË£º5ºÅ³ÉÔ±
+/*
+File: api\5_generate-voxel.impl.ts
+Responsible team member: Xu Zichen
+Description: Main generation API for prompt handling, Gemini calls, and brick validation.
+*/
 import { GoogleGenAI, Type } from '@google/genai';
 import {
   analyzeBrickConnectivity,
@@ -145,7 +149,7 @@ function getModelChain() {
 
 function getLocalPresetFromPrompt(value: string): 'Fox' | 'Tiger' | null {
   const normalized = value.trim().toLowerCase();
-  if (normalized.includes('fox') || normalized.includes('ç‹ç‹¸') || normalized.includes('å°ç‹ç‹?)) {
+  if (normalized.includes('fox') || normalized.includes('ç‹ç‹¸') || normalized.includes('å°ç‹ï¿½?)) {
     return 'Fox';
   }
   if (normalized.includes('tiger') || normalized.includes('è€è™') || normalized.includes('å°è€è™')) {

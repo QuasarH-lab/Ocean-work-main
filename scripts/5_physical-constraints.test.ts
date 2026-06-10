@@ -1,4 +1,8 @@
-// 负责人：6号成员
+/*
+File: scripts\5_physical-constraints.test.ts
+Responsible team member: Xu Zichen
+Description: Compatibility entry that runs the numbered physical constraint tests.
+*/
 import { voxelsToBricks } from '../src/lib/5_brickLayout.js';
 import {
   analyzeBrickConnectivity,

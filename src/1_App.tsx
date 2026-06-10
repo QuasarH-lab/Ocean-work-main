@@ -1,4 +1,8 @@
-// 负责人：1号成员
+/*
+File: src\1_App.tsx
+Responsible team member: He Linlin
+Description: React app root that composes the layout and generator page.
+*/
 import Layout from './components/1_Layout.tsx';
 import Generator from './pages/2_Generator.tsx';
 

@@ -1,2 +1,6 @@
-/* 负责人：6号成员 */
+/*
+File: src\index.css
+Responsible team member: Bai Yule
+Description: Compatibility stylesheet entry that re-exports the numbered global styles.
+*/
 @import "./1_index.css";

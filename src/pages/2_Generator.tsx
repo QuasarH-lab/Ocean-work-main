@@ -1,4 +1,8 @@
-// ¸ºÔğÈË£º2ºÅ³ÉÔ±
+/*
+File: src\pages\2_Generator.tsx
+Responsible team member: Huang Shuna
+Description: Generator workspace for prompt input, image upload, saved builds, and model actions.
+*/
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -255,7 +259,7 @@ export default function Generator() {
       const normalizedPrompt = prompt.trim().toLowerCase();
       const shouldUseLocalFox =
         mode === 'create' &&
-        (normalizedPrompt.includes('fox') || normalizedPrompt.includes('ç‹ç‹¸') || normalizedPrompt.includes('å°ç‹ç‹?));
+        (normalizedPrompt.includes('fox') || normalizedPrompt.includes('ç‹ç‹¸') || normalizedPrompt.includes('å°ç‹ï¿½?));
 
       if (shouldUseLocalFox) {
         const model = buildPresetModel('Fox');

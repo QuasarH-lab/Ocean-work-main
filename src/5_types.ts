@@ -1,4 +1,8 @@
-// 负责人：5号成员
+/*
+File: src\5_types.ts
+Responsible team member: Xu Zichen
+Description: Shared TypeScript types for voxel, brick, and saved model data.
+*/
 export interface LegoPart {
   id: string;
   name: string;

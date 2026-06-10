@@ -1,0 +1,4 @@
+example,version,voxels,parts,part_strategy
+Eagle,1,932,932,primarily 1x1
+Fox,2,5734,1317,mixed-size bricks
+Tiger,2,2841,636,mixed-size bricks
